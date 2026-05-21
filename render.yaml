@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: intern-pj1-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: GROQ_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: MAX_CONTEXT_CHUNKS
+        value: 5
+      - key: CHUNK_SIZE
+        value: 900
+      - key: CHUNK_OVERLAP
+        value: 150
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ALLOWED_ORIGIN_REGEX
+        value: ""

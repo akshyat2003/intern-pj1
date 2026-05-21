@@ -24,6 +24,15 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "name": "RAG Chatbot API",
+        "health": "/health",
+        "docs": "/docs",
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, str | int]:
     return {"status": "ok", "chunks": len(store.chunks), "storage": store.storage_backend}
