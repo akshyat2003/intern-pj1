@@ -1,6 +1,0 @@
-INFO:     127.0.0.1:60787 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52084 - "POST /upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59462 - "OPTIONS /chat HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59462 - "POST /chat HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60312 - "GET / HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:60312 - "GET /health HTTP/1.1" 200 OK

@@ -51,9 +51,15 @@ You will paste this as `DATABASE_URL` in Render.
 GROQ_API_KEY = your real Groq API key
 DATABASE_URL = your Neon/Supabase Postgres URL
 ALLOWED_ORIGINS = http://localhost:3000
+SMTP_HOST = your email SMTP host
+SMTP_USERNAME = your email username
+SMTP_PASSWORD = your email app password
+SMTP_FROM_EMAIL = the email address OTPs come from
 ```
 
 Deploy it.
+
+If you do not add SMTP settings, signup still works locally because the API returns a dev OTP. For real deployment, add SMTP so users receive OTP by email.
 
 After deploy, open:
 
@@ -126,4 +132,3 @@ Then:
 4. Ask again.
 
 The uploaded document chunks should stay saved because production uses Postgres.
-
