@@ -122,7 +122,7 @@ button {
 
 .auth-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-bottom: 18px;
 }
@@ -145,6 +145,12 @@ button {
 .auth-form {
   display: grid;
   gap: 12px;
+}
+
+.verify-copy {
+  margin: 0 0 4px;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .auth-form input {

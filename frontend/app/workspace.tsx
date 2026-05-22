@@ -268,6 +268,7 @@ export default function ChatWorkspace() {
             </div>
           </div>
 
+          {authMode !== "verify" ? (
           <div className="auth-tabs">
             <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>
               Login
@@ -275,10 +276,8 @@ export default function ChatWorkspace() {
             <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => setAuthMode("signup")}>
               Sign up
             </button>
-            <button type="button" className={authMode === "verify" ? "active" : ""} onClick={() => setAuthMode("verify")}>
-              OTP
-            </button>
           </div>
+          ) : null}
 
           {authMode === "signup" ? (
             <form className="auth-form" onSubmit={signup}>
@@ -293,9 +292,11 @@ export default function ChatWorkspace() {
 
           {authMode === "verify" ? (
             <form className="auth-form" onSubmit={verifyOtp}>
+              <p className="verify-copy">Enter the OTP sent to your email to activate your account.</p>
               <input placeholder="Email" type="email" value={verifyForm.email} onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })} />
               <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
               <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>
+              <button className="secondary-button" type="button" onClick={() => setAuthMode("signup")}>Back to signup</button>
             </form>
           ) : null}
 
