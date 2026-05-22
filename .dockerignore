@@ -1,0 +1,7 @@
+.git
+backend/.venv
+backend/data
+frontend/.next
+frontend/node_modules
+logs
+*.log
