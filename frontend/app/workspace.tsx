@@ -268,15 +268,15 @@ export default function ChatWorkspace() {
             </div>
           </div>
 
-          {authMode !== "verify" ? (
-          <div className="auth-tabs">
-            <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>
-              Login
-            </button>
-            <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => setAuthMode("signup")}>
-              Sign up
-            </button>
-          </div>
+          {authMode === "login" || authMode === "signup" ? (
+            <div className="auth-tabs" aria-label="Authentication options">
+              <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>
+                Login
+              </button>
+              <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => setAuthMode("signup")}>
+                Sign up
+              </button>
+            </div>
           ) : null}
 
           {authMode === "signup" ? (
