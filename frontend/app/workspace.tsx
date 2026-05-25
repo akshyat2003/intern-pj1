@@ -292,7 +292,7 @@ export default function ChatWorkspace() {
 
           {authMode === "verify" ? (
             <form className="auth-form" onSubmit={verifyOtp}>
-              <p className="verify-copy">Enter the OTP sent to your email to activate your account.</p>
+              <p className="verify-copy">Enter the OTP sent to your phone/email to activate your account.</p>
               <input placeholder="Email" type="email" value={verifyForm.email} onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })} />
               <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
               <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>

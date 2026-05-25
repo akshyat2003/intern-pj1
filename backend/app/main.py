@@ -10,7 +10,7 @@ from .auth import (
     hash_otp,
     hash_password,
     normalize_email,
-    send_otp_email,
+    send_otp_sms,
     verify_password,
 )
 from .config import get_settings
@@ -93,11 +93,17 @@ def signup(request: SignupRequest) -> SignupResponse:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     store.save_otp(email, hash_otp(otp), expires_at.isoformat())
-    email_sent = send_otp_email(settings, email, otp)
+    
+    sms_sent = send_otp_sms(settings, request.phone_number.strip(), otp)
+    if sms_sent:
+        message = "Signup successful. Check your mobile phone for the OTP."
+    else:
+        message = "Signup successful. MSG91 is not configured, so use the dev OTP."
+
     return SignupResponse(
-        message="Signup successful. Check your email for the OTP." if email_sent else "Signup successful. SMTP is not configured, so use the dev OTP.",
+        message=message,
         email=email,
-        dev_otp=None if email_sent else otp,
+        dev_otp=None if sms_sent else otp,
     )
 
 
@@ -117,7 +123,7 @@ def verify_otp(request: VerifyOtpRequest) -> MessageResponse:
 
     store.verify_user(email)
     store.delete_otp(email)
-    return MessageResponse(message="Email verified. You can now log in.")
+    return MessageResponse(message="Account verified. You can now log in.")
 
 
 @app.post("/auth/login", response_model=AuthResponse)
@@ -128,7 +134,7 @@ def login(request: LoginRequest) -> AuthResponse:
     if not user or not verify_password(request.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
     if not user["is_verified"]:
-        raise HTTPException(status_code=403, detail="Verify your email before logging in.")
+        raise HTTPException(status_code=403, detail="Verify your account before logging in.")
 
     token = create_access_token(settings, str(user["id"]))
     return AuthResponse(access_token=token, user=to_user_profile(user))

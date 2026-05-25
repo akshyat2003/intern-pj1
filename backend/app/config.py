@@ -32,11 +32,9 @@ class Settings(BaseSettings):
     auth_secret: str = Field(default="change-this-local-dev-secret", validation_alias="AUTH_SECRET")
     auth_token_minutes: int = Field(default=10080, validation_alias="AUTH_TOKEN_MINUTES")
     otp_expiry_minutes: int = Field(default=10, validation_alias="OTP_EXPIRY_MINUTES")
-    smtp_host: str = Field(default="", validation_alias="SMTP_HOST")
-    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
-    smtp_username: str = Field(default="", validation_alias="SMTP_USERNAME")
-    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
-    smtp_from_email: str = Field(default="", validation_alias="SMTP_FROM_EMAIL")
+    msg91_authkey: str = Field(default="", validation_alias="MSG91_AUTHKEY")
+    msg91_template_id: str = Field(default="", validation_alias="MSG91_TEMPLATE_ID")
+
 
     @property
     def provider_api_key(self) -> str:
