@@ -42,6 +42,44 @@ async function readJson(response: Response) {
   return data;
 }
 
+const COUNTRY_CODES = [
+  { name: "India", dial: "+91", flag: "🇮🇳", code: "IN" },
+  { name: "United States", dial: "+1", flag: "🇺🇸", code: "US" },
+  { name: "United Kingdom", dial: "+44", flag: "🇬🇧", code: "GB" },
+  { name: "Canada", dial: "+1", flag: "🇨🇦", code: "CA" },
+  { name: "Australia", dial: "+61", flag: "🇦🇺", code: "AU" },
+  { name: "Singapore", dial: "+65", flag: "🇸🇬", code: "SG" },
+  { name: "United Arab Emirates", dial: "+971", flag: "🇦🇪", code: "AE" },
+  { name: "Bangladesh", dial: "+880", flag: "🇧🇩", code: "BD" },
+  { name: "Nepal", dial: "+977", flag: "🇳🇵", code: "NP" },
+  { name: "Sri Lanka", dial: "+94", flag: "🇱🇰", code: "LK" },
+  { name: "Cambodia", dial: "+855", flag: "🇰🇭", code: "KH" },
+  { name: "Malaysia", dial: "+60", flag: "🇲🇾", code: "MY" },
+  { name: "Germany", dial: "+49", flag: "🇩🇪", code: "DE" },
+  { name: "France", dial: "+33", flag: "🇫🇷", code: "FR" },
+  { name: "Japan", dial: "+81", flag: "🇯🇵", code: "JP" },
+  { name: "Vietnam", dial: "+84", flag: "🇻🇳", code: "VN" },
+  { name: "Thailand", dial: "+66", flag: "🇹🇭", code: "TH" },
+  { name: "Indonesia", dial: "+62", flag: "🇮🇩", code: "ID" },
+  { name: "Philippines", dial: "+63", flag: "🇵🇭", code: "PH" },
+  { name: "Pakistan", dial: "+92", flag: "🇵🇰", code: "PK" },
+  { name: "Saudi Arabia", dial: "+966", flag: "🇸🇦", code: "SA" },
+  { name: "South Africa", dial: "+27", flag: "🇿🇦", code: "ZA" },
+  { name: "New Zealand", dial: "+64", flag: "🇳🇿", code: "NZ" },
+  { name: "Ireland", dial: "+353", flag: "🇮🇪", code: "IE" },
+  { name: "Netherlands", dial: "+31", flag: "🇳🇱", code: "NL" },
+  { name: "Switzerland", dial: "+41", flag: "🇨🇭", code: "CH" },
+  { name: "Belgium", dial: "+32", flag: "🇧🇪", code: "BE" },
+  { name: "Sweden", dial: "+46", flag: "🇸🇪", code: "SE" },
+  { name: "Norway", dial: "+47", flag: "🇳🇴", code: "NO" },
+  { name: "Denmark", dial: "+45", flag: "🇩🇰", code: "DK" },
+  { name: "Austria", dial: "+43", flag: "🇦🇹", code: "AT" },
+  { name: "Spain", dial: "+34", flag: "🇪🇸", code: "ES" },
+  { name: "Italy", dial: "+39", flag: "🇮🇹", code: "IT" },
+  { name: "Portugal", dial: "+351", flag: "🇵🇹", code: "PT" },
+];
+
+
 export default function ChatWorkspace() {
   const [token, setToken] = useState<string>(() => {
     if (typeof window === "undefined") {
@@ -64,6 +102,7 @@ export default function ChatWorkspace() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [verifyForm, setVerifyForm] = useState({ email: "", otp: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [countryCode, setCountryCode] = useState("+91");
 
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
@@ -138,11 +177,15 @@ export default function ChatWorkspace() {
     setAuthMessage("");
 
     try {
+      const formattedPhone = `${countryCode}${signupForm.phone_number.replace(/\D/g, "")}`;
       const data = await readJson(
         await fetch(`${API_BASE_URL}/auth/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(signupForm),
+          body: JSON.stringify({
+            ...signupForm,
+            phone_number: formattedPhone,
+          }),
         }),
       );
       setVerifyForm({ email: signupForm.email, otp: data.dev_otp || "" });
@@ -289,7 +332,25 @@ export default function ChatWorkspace() {
               <input placeholder="First name" value={signupForm.first_name} onChange={(event) => setSignupForm({ ...signupForm, first_name: event.target.value })} />
               <input placeholder="Last name" value={signupForm.last_name} onChange={(event) => setSignupForm({ ...signupForm, last_name: event.target.value })} />
               <input placeholder="Email" type="email" value={signupForm.email} onChange={(event) => setSignupForm({ ...signupForm, email: event.target.value })} />
-              <input placeholder="Phone number" value={signupForm.phone_number} onChange={(event) => setSignupForm({ ...signupForm, phone_number: event.target.value })} />
+              <div className="phone-container">
+                <select
+                  className="country-select"
+                  value={countryCode}
+                  onChange={(event) => setCountryCode(event.target.value)}
+                  aria-label="Country Code"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={`${c.code}-${c.dial}`} value={c.dial}>
+                      {c.flag} {c.dial} ({c.name})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Phone number"
+                  value={signupForm.phone_number}
+                  onChange={(event) => setSignupForm({ ...signupForm, phone_number: event.target.value })}
+                />
+              </div>
               <div className="password-container">
                 <input
                   placeholder="Password"

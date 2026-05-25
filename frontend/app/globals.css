@@ -436,3 +436,30 @@ button {
   color: var(--foreground);
 }
 
+.phone-container {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.phone-container .country-select {
+  flex: 0 0 125px;
+  width: 125px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 8px;
+  background: white;
+  outline: none;
+  font-size: 14px;
+}
+
+.phone-container .country-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.phone-container input {
+  flex: 1;
+}
+
