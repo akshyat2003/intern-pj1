@@ -98,7 +98,7 @@ def signup(request: SignupRequest) -> SignupResponse:
     if sms_sent:
         message = "Signup successful. Check your mobile phone for the OTP."
     else:
-        message = "Signup successful. MSG91 is not configured, so use the dev OTP."
+        message = f"Signup successful. MSG91 is not configured, so use the dev OTP: {otp}"
 
     return SignupResponse(
         message=message,
