@@ -431,7 +431,7 @@ export default function ChatWorkspace() {
             ref={fileInputRef}
             className="file-input"
             type="file"
-            accept=".txt,.md,.pdf,.docx,.csv"
+            accept=".txt,.md,.pdf,.docx,.csv,.ppt,.pptx"
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
           />
           <button className="secondary-button" type="button" onClick={uploadFile} disabled={isUploading}>
