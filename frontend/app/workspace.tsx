@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FileUp, LogOut, Send, UploadCloud, UserPlus } from "lucide-react";
+import { Eye, EyeOff, FileUp, LogOut, Send, UploadCloud, UserPlus } from "lucide-react";
 
 type Source = {
   filename: string;
@@ -27,7 +27,11 @@ type User = {
 
 type AuthMode = "login" | "signup" | "verify";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://127.0.0.1:8000"
+    : "/api");
 const TOKEN_KEY = "rag_chatbot_token";
 
 async function readJson(response: Response) {
@@ -59,6 +63,7 @@ export default function ChatWorkspace() {
   });
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [verifyForm, setVerifyForm] = useState({ email: "", otp: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
@@ -270,10 +275,10 @@ export default function ChatWorkspace() {
 
           {authMode === "login" || authMode === "signup" ? (
             <div className="auth-tabs" aria-label="Authentication options">
-              <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>
+              <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => { setAuthMode("login"); setShowPassword(false); }}>
                 Login
               </button>
-              <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => setAuthMode("signup")}>
+              <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => { setAuthMode("signup"); setShowPassword(false); }}>
                 Sign up
               </button>
             </div>
@@ -285,7 +290,22 @@ export default function ChatWorkspace() {
               <input placeholder="Last name" value={signupForm.last_name} onChange={(event) => setSignupForm({ ...signupForm, last_name: event.target.value })} />
               <input placeholder="Email" type="email" value={signupForm.email} onChange={(event) => setSignupForm({ ...signupForm, email: event.target.value })} />
               <input placeholder="Phone number" value={signupForm.phone_number} onChange={(event) => setSignupForm({ ...signupForm, phone_number: event.target.value })} />
-              <input placeholder="Password" type="password" value={signupForm.password} onChange={(event) => setSignupForm({ ...signupForm, password: event.target.value })} />
+              <div className="password-container">
+                <input
+                  placeholder="Password"
+                  type={showPassword ? "text" : "password"}
+                  value={signupForm.password}
+                  onChange={(event) => setSignupForm({ ...signupForm, password: event.target.value })}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Creating" : "Create account"}</button>
             </form>
           ) : null}
@@ -303,7 +323,22 @@ export default function ChatWorkspace() {
           {authMode === "login" ? (
             <form className="auth-form" onSubmit={login}>
               <input placeholder="Email" type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} />
-              <input placeholder="Password" type="password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} />
+              <div className="password-container">
+                <input
+                  placeholder="Password"
+                  type={showPassword ? "text" : "password"}
+                  value={loginForm.password}
+                  onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Signing in" : "Login"}</button>
             </form>
           ) : null}
