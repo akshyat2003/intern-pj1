@@ -74,17 +74,8 @@ def root() -> dict[str, str]:
 
 
 @app.get("/health")
-def health() -> dict:
-    settings = get_settings()
-    return {
-        "status": "ok",
-        "chunks": len(store.chunks),
-        "storage": store.storage_backend,
-        "smtp_configured": bool(settings.smtp_host and settings.smtp_username and settings.smtp_password and settings.smtp_from_email),
-        "smtp_host_set": bool(settings.smtp_host),
-        "smtp_username_set": bool(settings.smtp_username),
-        "smtp_from_set": bool(settings.smtp_from_email),
-    }
+def health() -> dict[str, str | int]:
+    return {"status": "ok", "chunks": len(store.chunks), "storage": store.storage_backend}
 
 
 # -------------------------
