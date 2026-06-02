@@ -12,7 +12,7 @@ class Settings(BaseSettings):
         validation_alias="ALLOWED_ORIGINS"
     )
     allowed_origin_regex: str = Field(
-        default=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+        default=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app",
         validation_alias="ALLOWED_ORIGIN_REGEX",
     )
 
