@@ -4,18 +4,25 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     ai_provider: str = Field(default="groq", validation_alias="AI_PROVIDER")
+
     allowed_origins: str = Field(
         default="http://localhost:3000,http://127.0.0.1:3000",
-        validation_alias="ALLOWED_ORIGINS"
+        validation_alias="ALLOWED_ORIGINS",
     )
+
     allowed_origin_regex: str = Field(
         default=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app",
         validation_alias="ALLOWED_ORIGIN_REGEX",
     )
 
+    # ---------------- AI PROVIDERS ----------------
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.1-8b-instant", validation_alias="GROQ_MODEL")
     groq_base_url: str = Field(default="https://api.groq.com/openai/v1", validation_alias="GROQ_BASE_URL")
@@ -24,39 +31,58 @@ class Settings(BaseSettings):
     nvidia_model: str = Field(default="meta/llama-3.1-8b-instruct", validation_alias="NVIDIA_MODEL")
     nvidia_base_url: str = Field(default="https://integrate.api.nvidia.com/v1", validation_alias="NVIDIA_BASE_URL")
 
+    # ---------------- RAG SETTINGS ----------------
     max_context_chunks: int = Field(default=5, validation_alias="MAX_CONTEXT_CHUNKS")
     chunk_size: int = Field(default=900, validation_alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=150, validation_alias="CHUNK_OVERLAP")
+
     database_url: str = Field(default="", validation_alias="DATABASE_URL")
     sqlite_path: str = Field(default="data/documents.db", validation_alias="SQLITE_PATH")
+
     max_user_tokens: int = Field(default=50000, validation_alias="MAX_USER_TOKENS")
     model_context_window: int = Field(default=8192, validation_alias="MODEL_CONTEXT_WINDOW")
+
+    # ---------------- AUTH ----------------
     auth_secret: str = Field(default="change-this-local-dev-secret", validation_alias="AUTH_SECRET")
     auth_token_minutes: int = Field(default=10080, validation_alias="AUTH_TOKEN_MINUTES")
     otp_expiry_minutes: int = Field(default=10, validation_alias="OTP_EXPIRY_MINUTES")
+
+    # ---------------- SMTP ----------------
     smtp_host: str = Field(default="", validation_alias="SMTP_HOST")
     smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
     smtp_username: str = Field(default="", validation_alias="SMTP_USERNAME")
     smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
     smtp_from_email: str = Field(default="", validation_alias="SMTP_FROM_EMAIL")
 
-
-    @property
-    def provider_api_key(self) -> str:
-        api_key = self.groq_api_key if self.normalized_provider == "groq" else self.nvidia_api_key
-        return api_key.strip()
-
-    @property
-    def provider_model(self) -> str:
-        return self.groq_model if self.normalized_provider == "groq" else self.nvidia_model
-
-    @property
-    def provider_base_url(self) -> str:
-        return self.groq_base_url if self.normalized_provider == "groq" else self.nvidia_base_url
-
+    # ---------------- PROVIDER HELPERS ----------------
     @property
     def normalized_provider(self) -> str:
         return self.ai_provider.strip().lower()
+
+    @property
+    def provider_api_key(self) -> str:
+        if self.normalized_provider == "groq":
+            return self.groq_api_key.strip()
+        elif self.normalized_provider == "nvidia":
+            return self.nvidia_api_key.strip()
+        else:
+            raise ValueError(f"Unsupported AI provider: {self.ai_provider}")
+
+    @property
+    def provider_model(self) -> str:
+        return (
+            self.groq_model
+            if self.normalized_provider == "groq"
+            else self.nvidia_model
+        )
+
+    @property
+    def provider_base_url(self) -> str:
+        return (
+            self.groq_base_url
+            if self.normalized_provider == "groq"
+            else self.nvidia_base_url
+        )
 
 
 @lru_cache

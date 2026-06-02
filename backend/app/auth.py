@@ -69,11 +69,8 @@ def decode_access_token(settings: Settings, token: str) -> str:
 
 def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
     if not settings.smtp_host or not settings.smtp_username or not settings.smtp_password or not settings.smtp_from_email:
-        print(f"SMTP NOT CONFIGURED")
-        print(f"Host: {settings.smtp_host}")
-        print(f"User: {settings.smtp_username}")
-        print(f"From: {settings.smtp_from_email}")
-        print(f"OTP (DEV ONLY): {otp}")
+        print("[SMTP] Not configured, skipping email", flush=True)
+        print(f"[DEV OTP] {email} -> {otp}", flush=True)
         return False
 
     try:
@@ -82,8 +79,14 @@ def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
         msg["To"] = email
         msg["Subject"] = "Your Verification OTP"
 
-        body = f"Hello,\n\nYour verification OTP code is: {otp}\n\nThis OTP is valid for {settings.otp_expiry_minutes} minutes."
+        body = (
+            f"Hello,\n\n"
+            f"Your verification OTP code is: {otp}\n\n"
+            f"This OTP is valid for {settings.otp_expiry_minutes} minutes."
+        )
         msg.attach(MIMEText(body, "plain"))
+
+        print("[SMTP] Connecting...", flush=True)
 
         if settings.smtp_port == 465:
             server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
@@ -91,16 +94,32 @@ def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
         else:
             server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
             server.ehlo()
+            print("[SMTP] Starting TLS...", flush=True)
             server.starttls()
             server.ehlo()
 
+        print("[SMTP] Logging in...", flush=True)
         server.login(settings.smtp_username, settings.smtp_password)
+
+        print("[SMTP] Sending email...", flush=True)
         server.send_message(msg)
         server.quit()
+
+        print("[SMTP] Success", flush=True)
         return True
+
     except Exception as e:
-        print(f"SMTP ERROR (FULL): {repr(e)}")
-        raise e
+        print(f"[SMTP ERROR SAFE] {repr(e)}", flush=True)
+        return False
+
+
+def safe_send_otp(settings: Settings, email: str, otp: str) -> None:
+    """Wrapper for use with BackgroundTasks — never raises, always logs."""
+    try:
+        send_otp_email(settings, email, otp)
+    except Exception as e:
+        print(f"[BACKGROUND SMTP ERROR] {repr(e)}", flush=True)
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),

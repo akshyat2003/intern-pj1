@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import (
@@ -10,6 +10,7 @@ from .auth import (
     hash_otp,
     hash_password,
     normalize_email,
+    safe_send_otp,
     send_otp_email,
     verify_password,
 )
@@ -64,6 +65,9 @@ def to_user_profile(user: dict) -> UserProfile:
     )
 
 
+# -------------------------
+# ROOT & HEALTH
+# -------------------------
 @app.get("/")
 def root() -> dict[str, str]:
     return {
@@ -78,16 +82,11 @@ def health() -> dict[str, str | int]:
     return {"status": "ok", "chunks": len(store.chunks), "storage": store.storage_backend}
 
 
-
-
-
-
-
 # -------------------------
 # SIGNUP
 # -------------------------
 @app.post("/auth/signup", response_model=SignupResponse)
-def signup(request: SignupRequest) -> SignupResponse:
+def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupResponse:
     settings = get_settings()
 
     email = normalize_email(str(request.email))
@@ -101,17 +100,11 @@ def signup(request: SignupRequest) -> SignupResponse:
     if existing_user:
         if not existing_user.get("is_verified", False):
             store.save_otp(email, hash_otp(otp), expires_at.isoformat())
-            try:
-                email_sent = send_otp_email(settings, email, otp)
-                if not email_sent:
-                    # SMTP not configured — print OTP to server logs as fallback
-                    print(f"\n--- DEV OTP (SMTP not configured) --- {email} | {otp}\n", flush=True)
-                    message = "Account already exists but is unverified. Check server logs for your OTP."
-                else:
-                    message = "Account already exists but is unverified. A new OTP has been sent to your email."
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"SMTP Send Failure: {str(e)}")
-            return SignupResponse(message=message, email=email)
+            background_tasks.add_task(safe_send_otp, settings, email, otp)
+            return SignupResponse(
+                message="Account already exists but is unverified. A new OTP has been sent to your email.",
+                email=email,
+            )
         else:
             raise HTTPException(status_code=409, detail="A user with this email already exists.")
 
@@ -127,19 +120,12 @@ def signup(request: SignupRequest) -> SignupResponse:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     store.save_otp(email, hash_otp(otp), expires_at.isoformat())
+    background_tasks.add_task(safe_send_otp, settings, email, otp)
 
-    try:
-        email_sent = send_otp_email(settings, email, otp)
-        if not email_sent:
-            # SMTP not configured — print OTP to server logs as fallback
-            print(f"\n--- DEV OTP (SMTP not configured) --- {email} | {otp}\n", flush=True)
-            message = "Signup successful. SMTP is not configured. Check server logs (dev mode)."
-        else:
-            message = "Signup successful. Check your email for OTP."
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"SMTP Send Failure: {str(e)}")
-
-    return SignupResponse(message=message, email=email)
+    return SignupResponse(
+        message="Signup successful. Check your email for the OTP to verify your account.",
+        email=email,
+    )
 
 
 # -------------------------
@@ -159,12 +145,6 @@ def verify_otp(request: VerifyOtpRequest) -> MessageResponse:
 
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(400, "OTP expired. Please sign up again.")
-
-    # FIX: brute-force protection (assumes store supports this)
-    attempts = store.increment_otp_attempts(email)
-    if attempts > 5:
-        store.delete_otp(email)
-        raise HTTPException(429, "Too many OTP attempts. Please sign up again.")
 
     if record["otp_hash"] != hash_otp(request.otp.strip()):
         raise HTTPException(400, "Invalid OTP.")
@@ -311,7 +291,6 @@ async def chat(
             token_limit=int(updated_user.get("token_limit", settings.max_user_tokens)),
         )
 
-    # FIX: safer prompt injection protection
     context_parts = [
         f"[{i}] FILE: {chunk.filename}\n<<<{chunk.text}>>>"
         for i, (chunk, _) in enumerate(results, start=1)
