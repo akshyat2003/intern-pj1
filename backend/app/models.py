@@ -28,7 +28,6 @@ class SignupRequest(BaseModel):
 class SignupResponse(BaseModel):
     message: str
     email: str
-    dev_otp: str | None = None
 
 
 class LoginRequest(BaseModel):
