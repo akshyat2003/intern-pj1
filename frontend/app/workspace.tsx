@@ -118,7 +118,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
     password: "",
   });
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [verifyForm, setVerifyForm] = useState({ email: "", otp: "" });
+  const [verifyForm, setVerifyForm] = useState({ phone_number: "", otp: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
 
@@ -247,7 +247,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
       const data = await readJson(response);
       setAuthMessage(data.message);
-      setVerifyForm({ email: signupForm.email, otp: "" });
+      setVerifyForm({ phone_number: formattedPhone, otp: "" });
       setAuthMode("verify");
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Signup failed.");
@@ -273,7 +273,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
       const data = await readJson(response);
       setAuthMessage(data.message);
-      setLoginForm({ email: verifyForm.email, password: "" });
       setAuthMode("login");
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Verification failed.");
@@ -297,8 +296,8 @@ export default function ChatWorkspace({ status }: { status: string }) {
       });
 
       if (response.status === 403) {
-        setAuthMessage("Account exists but is not verified. Please enter the OTP sent to your email.");
-        setVerifyForm({ email: loginForm.email, otp: "" });
+        setAuthMessage("Account not verified. Enter the OTP sent to your phone number.");
+        setVerifyForm({ phone_number: "", otp: "" });
         setAuthMode("verify");
         return;
       }
@@ -474,7 +473,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
             {authMode === "verify" ? (
               <form className="auth-form" onSubmit={verifyOtp}>
                 <p className="verify-copy">Enter the OTP sent to your phone number via SMS to activate your account.</p>
-                <input placeholder="Email" type="email" value={verifyForm.email} onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })} />
+                <input placeholder="Phone number (with country code, e.g. +91XXXXXXXXXX)" type="tel" value={verifyForm.phone_number} onChange={(event) => setVerifyForm({ ...verifyForm, phone_number: event.target.value })} />
                 <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
                 <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>
                 <button className="secondary-button" type="button" onClick={() => setAuthMode("signup")}>Back to signup</button>

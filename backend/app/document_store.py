@@ -235,6 +235,23 @@ class DocumentStore:
             pass
         return None
 
+    def get_user_by_phone(self, phone_number: str) -> dict | None:
+        if not self._storage_ready:
+            self.configure()
+        try:
+            res = self._users_collection.get(where={"phone_number": phone_number})
+            if res and res["metadatas"]:
+                meta = res["metadatas"][0]
+                if "tokens_used" not in meta:
+                    meta["tokens_used"] = 0
+                if "token_limit" not in meta:
+                    meta["token_limit"] = 50000
+                return meta
+        except Exception:
+            pass
+        return None
+
+
     def get_user_by_id(self, user_id: str) -> dict | None:
         if not self._storage_ready:
             self.configure()

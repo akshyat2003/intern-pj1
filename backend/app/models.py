@@ -36,7 +36,7 @@ class LoginRequest(BaseModel):
 
 
 class VerifyOtpRequest(BaseModel):
-    email: EmailStr
+    phone_number: str = Field(min_length=6, max_length=20)
     otp: str
 
 
