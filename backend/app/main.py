@@ -104,8 +104,8 @@ def signup(request: SignupRequest) -> SignupResponse:
             try:
                 email_sent = send_otp_email(settings, email, otp)
                 if not email_sent:
-                    if settings.env == "development":
-                        print(f"\n--- DEV OTP --- {email} | {otp}\n", flush=True)
+                    # SMTP not configured — print OTP to server logs as fallback
+                    print(f"\n--- DEV OTP (SMTP not configured) --- {email} | {otp}\n", flush=True)
                     message = "Account already exists but is unverified. Check server logs for your OTP."
                 else:
                     message = "Account already exists but is unverified. A new OTP has been sent to your email."
@@ -131,8 +131,8 @@ def signup(request: SignupRequest) -> SignupResponse:
     try:
         email_sent = send_otp_email(settings, email, otp)
         if not email_sent:
-            if settings.env == "development":
-                print(f"\n--- DEV OTP --- {email} | {otp}\n", flush=True)
+            # SMTP not configured — print OTP to server logs as fallback
+            print(f"\n--- DEV OTP (SMTP not configured) --- {email} | {otp}\n", flush=True)
             message = "Signup successful. SMTP is not configured. Check server logs (dev mode)."
         else:
             message = "Signup successful. Check your email for OTP."
