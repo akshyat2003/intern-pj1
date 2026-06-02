@@ -99,7 +99,6 @@ def signup(request: SignupRequest) -> SignupResponse:
             email,
             request.phone_number.strip(),
             hash_password(request.password),
-            is_verified=False,   # IMPORTANT FIX
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
