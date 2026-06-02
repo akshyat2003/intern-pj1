@@ -105,7 +105,6 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
             background_tasks.add_task(safe_send_otp_sms, settings, phone, otp)
             return SignupResponse(
                 message="Account already exists but is unverified. A new OTP has been sent to your phone.",
-                email=email,
             )
         else:
             raise HTTPException(status_code=409, detail="A user with this email already exists.")
@@ -126,7 +125,6 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
 
     return SignupResponse(
         message="Signup successful. Check your phone for the OTP to verify your account.",
-        email=email,
     )
 
 

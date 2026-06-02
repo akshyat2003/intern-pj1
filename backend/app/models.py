@@ -27,7 +27,6 @@ class SignupRequest(BaseModel):
 
 class SignupResponse(BaseModel):
     message: str
-    email: str
 
 
 class LoginRequest(BaseModel):
