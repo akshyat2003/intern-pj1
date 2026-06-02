@@ -10,7 +10,7 @@ from .auth import (
     hash_otp,
     hash_password,
     normalize_email,
-    safe_send_otp,
+    safe_send_otp_sms,
     verify_password,
 )
 from .config import get_settings
@@ -89,6 +89,7 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
     settings = get_settings()
 
     email = normalize_email(str(request.email))
+    phone = request.phone_number.strip()
     otp = generate_otp()
 
     expires_at = datetime.now(timezone.utc) + timedelta(
@@ -99,9 +100,9 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
     if existing_user:
         if not existing_user.get("is_verified", False):
             store.save_otp(email, hash_otp(otp), expires_at.isoformat())
-            background_tasks.add_task(safe_send_otp, settings, email, otp)
+            background_tasks.add_task(safe_send_otp_sms, settings, phone, otp)
             return SignupResponse(
-                message="Account already exists but is unverified. A new OTP has been sent to your email.",
+                message="Account already exists but is unverified. A new OTP has been sent to your phone.",
                 email=email,
             )
         else:
@@ -112,17 +113,17 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
             request.first_name.strip(),
             request.last_name.strip(),
             email,
-            request.phone_number.strip(),
+            phone,
             hash_password(request.password),
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     store.save_otp(email, hash_otp(otp), expires_at.isoformat())
-    background_tasks.add_task(safe_send_otp, settings, email, otp)
+    background_tasks.add_task(safe_send_otp_sms, settings, phone, otp)
 
     return SignupResponse(
-        message="Signup successful. Check your email for the OTP to verify your account.",
+        message="Signup successful. Check your phone for the OTP to verify your account.",
         email=email,
     )
 

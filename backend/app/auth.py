@@ -3,10 +3,8 @@ import hashlib
 import hmac
 import os
 import random
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
+import httpx
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -16,9 +14,16 @@ from .document_store import store
 
 security = HTTPBearer()
 
+MSG91_OTP_URL = "https://control.msg91.com/api/v5/otp"
+
 
 def normalize_email(email: str) -> str:
     return email.strip().lower()
+
+
+def normalize_phone(phone: str) -> str:
+    """Strip leading + and spaces. MSG91 expects digits only with country code."""
+    return phone.strip().lstrip("+").replace(" ", "").replace("-", "")
 
 
 def hash_password(password: str) -> str:
@@ -67,58 +72,47 @@ def decode_access_token(settings: Settings, token: str) -> str:
     return user_id
 
 
-def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
-    if not settings.smtp_host or not settings.smtp_username or not settings.smtp_password or not settings.smtp_from_email:
-        print("[SMTP] Not configured, skipping email", flush=True)
-        print(f"[DEV OTP] {email} -> {otp}", flush=True)
+def send_otp_sms(settings: Settings, phone: str, otp: str) -> bool:
+    """Send OTP via MSG91 SMS. Returns True on success, False if not configured."""
+    if not settings.msg91_authkey or not settings.msg91_template_id:
+        print("[MSG91] Not configured — printing OTP to logs (dev mode)", flush=True)
+        print(f"[DEV OTP] Phone: {phone} | OTP: {otp}", flush=True)
         return False
 
-    try:
-        msg = MIMEMultipart()
-        msg["From"] = settings.smtp_from_email
-        msg["To"] = email
-        msg["Subject"] = "Your Verification OTP"
+    mobile = normalize_phone(phone)
 
-        body = (
-            f"Hello,\n\n"
-            f"Your verification OTP code is: {otp}\n\n"
-            f"This OTP is valid for {settings.otp_expiry_minutes} minutes."
+    try:
+        response = httpx.post(
+            MSG91_OTP_URL,
+            headers={
+                "authkey": settings.msg91_authkey,
+                "Content-Type": "application/json",
+            },
+            json={
+                "otp": otp,
+                "mobile": mobile,
+                "template_id": settings.msg91_template_id,
+            },
+            timeout=10,
         )
-        msg.attach(MIMEText(body, "plain"))
-
-        print("[SMTP] Connecting...", flush=True)
-
-        if settings.smtp_port == 465:
-            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
-            server.ehlo()
+        data = response.json()
+        if data.get("type") == "success":
+            print(f"[MSG91] OTP sent to {mobile}", flush=True)
+            return True
         else:
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
-            server.ehlo()
-            print("[SMTP] Starting TLS...", flush=True)
-            server.starttls()
-            server.ehlo()
-
-        print("[SMTP] Logging in...", flush=True)
-        server.login(settings.smtp_username, settings.smtp_password)
-
-        print("[SMTP] Sending email...", flush=True)
-        server.send_message(msg)
-        server.quit()
-
-        print("[SMTP] Success", flush=True)
-        return True
-
+            print(f"[MSG91] Failed: {data}", flush=True)
+            return False
     except Exception as e:
-        print(f"[SMTP ERROR SAFE] {repr(e)}", flush=True)
+        print(f"[MSG91 ERROR] {repr(e)}", flush=True)
         return False
 
 
-def safe_send_otp(settings: Settings, email: str, otp: str) -> None:
-    """Wrapper for use with BackgroundTasks — never raises, always logs."""
+def safe_send_otp_sms(settings: Settings, phone: str, otp: str) -> None:
+    """Wrapper for BackgroundTasks — never raises, always logs."""
     try:
-        send_otp_email(settings, email, otp)
+        send_otp_sms(settings, phone, otp)
     except Exception as e:
-        print(f"[BACKGROUND SMTP ERROR] {repr(e)}", flush=True)
+        print(f"[BACKGROUND MSG91 ERROR] {repr(e)}", flush=True)
 
 
 def get_current_user(

@@ -406,7 +406,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
             <div className="auth-heading">
               <UserPlus size={24} />
               <div>
-                <h1>{authMode === "signup" ? "Create account" : authMode === "verify" ? "Verify email" : "Sign in"}</h1>
+                <h1>{authMode === "signup" ? "Create account" : authMode === "verify" ? "Verify phone" : "Sign in"}</h1>
                 <p>Use your account to keep documents and chat history saved.</p>
               </div>
             </div>
@@ -473,7 +473,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
             {authMode === "verify" ? (
               <form className="auth-form" onSubmit={verifyOtp}>
-                <p className="verify-copy">Enter the OTP sent to your email to activate your account.</p>
+                <p className="verify-copy">Enter the OTP sent to your phone number via SMS to activate your account.</p>
                 <input placeholder="Email" type="email" value={verifyForm.email} onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })} />
                 <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
                 <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>
