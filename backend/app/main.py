@@ -92,6 +92,21 @@ def signup(request: SignupRequest) -> SignupResponse:
         minutes=settings.otp_expiry_minutes
     )
 
+    existing_user = store.get_user_by_email(email)
+    if existing_user:
+        if not existing_user.get("is_verified", False):
+            store.save_otp(email, hash_otp(otp), expires_at.isoformat())
+            email_sent = send_otp_email(settings, email, otp)
+            if email_sent:
+                message = "Account already exists but is unverified. A new OTP has been sent to your email."
+            else:
+                if settings.env == "development":
+                    print(f"\n--- DEV OTP --- {email} | {otp}\n", flush=True)
+                message = "Account already exists but is unverified. Check server logs for your OTP."
+            return SignupResponse(message=message, email=email)
+        else:
+            raise HTTPException(status_code=409, detail="A user with this email already exists.")
+
     try:
         store.create_user(
             request.first_name.strip(),

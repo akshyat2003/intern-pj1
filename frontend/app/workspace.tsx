@@ -287,7 +287,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
     setIsAuthLoading(true);
     setAuthError("");
     setAuthMessage("");
-
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -296,6 +295,13 @@ export default function ChatWorkspace({ status }: { status: string }) {
         },
         body: JSON.stringify(loginForm),
       });
+
+      if (response.status === 403) {
+        setAuthMessage("Account exists but is not verified. Please enter the OTP sent to your email.");
+        setVerifyForm({ email: loginForm.email, otp: "" });
+        setAuthMode("verify");
+        return;
+      }
 
       const data = await readJson(response);
       window.localStorage.setItem(TOKEN_KEY, data.access_token);
@@ -358,7 +364,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
       });
       const data = await readJson(response);
       setMessages((current) => [...current, { role: "assistant", content: data.answer, sources: data.sources }]);
-      
+
       if (data.prompt_tokens !== undefined) {
         setLastQueryStats({
           promptTokens: data.prompt_tokens,
@@ -520,73 +526,35 @@ export default function ChatWorkspace({ status }: { status: string }) {
         </div>
       </header>
       <section className="workspace">
-      <aside className="panel upload-panel">
-        <div className="account-strip">
-          <div>
-            <strong>{user.first_name} {user.last_name}</strong>
-            <span>{user.email}</span>
-          </div>
-          <button className="icon-button" type="button" onClick={logout} title="Logout">
-            <LogOut size={18} />
-          </button>
-        </div>
-        
-        {/* Token Quota & Cost Optimization Panel */}
-        <div className="stats-section">
-          <h2 className="stats-section-title">
-            <Coins size={16} /> Cost Optimization
-          </h2>
-          
-          {/* User Token Quota */}
-          <div className="stats-card">
-            <div className="stats-label-row">
-              <span className="stats-title">Token Quota</span>
-              <span className="stats-values">
-                {(user.tokens_used ?? 0).toLocaleString()} / {(user.token_limit ?? 50000).toLocaleString()}
-              </span>
+        <aside className="panel upload-panel">
+          <div className="account-strip">
+            <div>
+              <strong>{user.first_name} {user.last_name}</strong>
+              <span>{user.email}</span>
             </div>
-            
-            {(() => {
-              const used = user.tokens_used ?? 0;
-              const limit = user.token_limit ?? 50000;
-              const ratio = Math.min(100, (used / limit) * 100);
-              const leftoverPercent = Math.max(0, 100 - ratio).toFixed(1);
-              let statusClass = "safe";
-              if (ratio > 85) statusClass = "critical";
-              else if (ratio > 60) statusClass = "warning";
-
-              return (
-                <>
-                  <div className="progress-track" title={`${ratio.toFixed(1)}% used`}>
-                    <div 
-                      className={`progress-fill ${statusClass}`} 
-                      style={{ width: `${ratio}%` }}
-                    />
-                  </div>
-                  <div className="stats-footer">
-                    <span>{ratio.toFixed(1)}% used</span>
-                    <span className={`percentage-left ${statusClass}`}>{leftoverPercent}% left</span>
-                  </div>
-                </>
-              );
-            })()}
+            <button className="icon-button" type="button" onClick={logout} title="Logout">
+              <LogOut size={18} />
+            </button>
           </div>
 
-          {/* Context Window Stats */}
-          {lastQueryStats && (
-            <div className="stats-card" style={{ borderTop: "1px solid rgba(15, 118, 110, 0.1)", paddingTop: "12px" }}>
+          {/* Token Quota & Cost Optimization Panel */}
+          <div className="stats-section">
+            <h2 className="stats-section-title">
+              <Coins size={16} /> Cost Optimization
+            </h2>
+
+            {/* User Token Quota */}
+            <div className="stats-card">
               <div className="stats-label-row">
-                <span className="stats-title" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Cpu size={14} /> Context Window
-                </span>
+                <span className="stats-title">Token Quota</span>
                 <span className="stats-values">
-                  {lastQueryStats.totalTokens.toLocaleString()} / {lastQueryStats.contextWindowLimit.toLocaleString()}
+                  {(user.tokens_used ?? 0).toLocaleString()} / {(user.token_limit ?? 50000).toLocaleString()}
                 </span>
               </div>
-              
+
               {(() => {
-                const used = lastQueryStats.totalTokens;
-                const limit = lastQueryStats.contextWindowLimit;
+                const used = user.tokens_used ?? 0;
+                const limit = user.token_limit ?? 50000;
                 const ratio = Math.min(100, (used / limit) * 100);
                 const leftoverPercent = Math.max(0, 100 - ratio).toFixed(1);
                 let statusClass = "safe";
@@ -596,8 +564,8 @@ export default function ChatWorkspace({ status }: { status: string }) {
                 return (
                   <>
                     <div className="progress-track" title={`${ratio.toFixed(1)}% used`}>
-                      <div 
-                        className={`progress-fill ${statusClass}`} 
+                      <div
+                        className={`progress-fill ${statusClass}`}
                         style={{ width: `${ratio}%` }}
                       />
                     </div>
@@ -605,87 +573,125 @@ export default function ChatWorkspace({ status }: { status: string }) {
                       <span>{ratio.toFixed(1)}% used</span>
                       <span className={`percentage-left ${statusClass}`}>{leftoverPercent}% left</span>
                     </div>
-                    <div className="context-breakdown">
-                      <div className="context-breakdown-item">
-                        <span className="context-breakdown-label">Prompt</span>
-                        <span className="context-breakdown-value">{lastQueryStats.promptTokens.toLocaleString()} tkn</span>
-                      </div>
-                      <div className="context-breakdown-item">
-                        <span className="context-breakdown-label">Response</span>
-                        <span className="context-breakdown-value">{lastQueryStats.completionTokens.toLocaleString()} tkn</span>
-                      </div>
-                    </div>
                   </>
                 );
               })()}
             </div>
-          )}
-        </div>
 
-        <h1 className="panel-heading">Upload knowledge</h1>
-        <p className="panel-copy">Documents and chat history are saved to your account.</p>
-        <div className="drop-zone">
-          <UploadCloud size={34} />
-          <input
-            ref={fileInputRef}
-            className="file-input"
-            type="file"
-            accept=".txt,.md,.pdf,.docx,.csv,.ppt,.pptx"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          />
-          <button className="secondary-button" type="button" onClick={uploadFile} disabled={isUploading}>
-            <FileUp size={18} />
-            {isUploading ? "Uploading" : "Index file"}
-          </button>
-        </div>
-        {uploadStatus ? <div className="message">{uploadStatus}</div> : null}
-        {uploadError ? <div className="message error">{uploadError}</div> : null}
-      </aside>
+            {/* Context Window Stats */}
+            {lastQueryStats && (
+              <div className="stats-card" style={{ borderTop: "1px solid rgba(15, 118, 110, 0.1)", paddingTop: "12px" }}>
+                <div className="stats-label-row">
+                  <span className="stats-title" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Cpu size={14} /> Context Window
+                  </span>
+                  <span className="stats-values">
+                    {lastQueryStats.totalTokens.toLocaleString()} / {lastQueryStats.contextWindowLimit.toLocaleString()}
+                  </span>
+                </div>
 
-      <section className="panel chat-panel" aria-label="Document chat">
-        <div className="chat-header">
-          <div>
-            <h2 className="chat-title">Document Q&A</h2>
-            <p className="chat-subtitle">Answers use your saved documents. History reloads after login.</p>
-          </div>
-        </div>
+                {(() => {
+                  const used = lastQueryStats.totalTokens;
+                  const limit = lastQueryStats.contextWindowLimit;
+                  const ratio = Math.min(100, (used / limit) * 100);
+                  const leftoverPercent = Math.max(0, 100 - ratio).toFixed(1);
+                  let statusClass = "safe";
+                  if (ratio > 85) statusClass = "critical";
+                  else if (ratio > 60) statusClass = "warning";
 
-        <div className="message-list">
-          {messages.length === 0 ? (
-            <div className="empty-state">Upload a file and ask your first question.</div>
-          ) : (
-            messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={`bubble ${message.role}`}>
-                <div>{message.content}</div>
-                {message.sources?.length ? (
-                  <div className="sources">
-                    {message.sources.map((source) => (
-                      <div className="source" key={`${source.filename}-${source.chunk_id}`}>
-                        {source.filename}, chunk {source.chunk_id}: {source.text.slice(0, 220)}
-                        {source.text.length > 220 ? "..." : ""}
+                  return (
+                    <>
+                      <div className="progress-track" title={`${ratio.toFixed(1)}% used`}>
+                        <div
+                          className={`progress-fill ${statusClass}`}
+                          style={{ width: `${ratio}%` }}
+                        />
                       </div>
-                    ))}
-                  </div>
-                ) : null}
+                      <div className="stats-footer">
+                        <span>{ratio.toFixed(1)}% used</span>
+                        <span className={`percentage-left ${statusClass}`}>{leftoverPercent}% left</span>
+                      </div>
+                      <div className="context-breakdown">
+                        <div className="context-breakdown-item">
+                          <span className="context-breakdown-label">Prompt</span>
+                          <span className="context-breakdown-value">{lastQueryStats.promptTokens.toLocaleString()} tkn</span>
+                        </div>
+                        <div className="context-breakdown-item">
+                          <span className="context-breakdown-label">Response</span>
+                          <span className="context-breakdown-value">{lastQueryStats.completionTokens.toLocaleString()} tkn</span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
-            ))
-          )}
-          {isAsking ? <div className="bubble assistant">Thinking...</div> : null}
-        </div>
+            )}
+          </div>
 
-        <form className="composer" onSubmit={askQuestion}>
-          <textarea
-            placeholder="Ask something about your uploaded files"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-          />
-          <button className="primary-button" type="submit" disabled={!canAsk}>
-            <Send size={18} />
-            Ask
-          </button>
-        </form>
+          <h1 className="panel-heading">Upload knowledge</h1>
+          <p className="panel-copy">Documents and chat history are saved to your account.</p>
+          <div className="drop-zone">
+            <UploadCloud size={34} />
+            <input
+              ref={fileInputRef}
+              className="file-input"
+              type="file"
+              accept=".txt,.md,.pdf,.docx,.csv,.ppt,.pptx"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            />
+            <button className="secondary-button" type="button" onClick={uploadFile} disabled={isUploading}>
+              <FileUp size={18} />
+              {isUploading ? "Uploading" : "Index file"}
+            </button>
+          </div>
+          {uploadStatus ? <div className="message">{uploadStatus}</div> : null}
+          {uploadError ? <div className="message error">{uploadError}</div> : null}
+        </aside>
+
+        <section className="panel chat-panel" aria-label="Document chat">
+          <div className="chat-header">
+            <div>
+              <h2 className="chat-title">Document Q&A</h2>
+              <p className="chat-subtitle">Answers use your saved documents. History reloads after login.</p>
+            </div>
+          </div>
+
+          <div className="message-list">
+            {messages.length === 0 ? (
+              <div className="empty-state">Upload a file and ask your first question.</div>
+            ) : (
+              messages.map((message, index) => (
+                <div key={`${message.role}-${index}`} className={`bubble ${message.role}`}>
+                  <div>{message.content}</div>
+                  {message.sources?.length ? (
+                    <div className="sources">
+                      {message.sources.map((source) => (
+                        <div className="source" key={`${source.filename}-${source.chunk_id}`}>
+                          {source.filename}, chunk {source.chunk_id}: {source.text.slice(0, 220)}
+                          {source.text.length > 220 ? "..." : ""}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))
+            )}
+            {isAsking ? <div className="bubble assistant">Thinking...</div> : null}
+          </div>
+
+          <form className="composer" onSubmit={askQuestion}>
+            <textarea
+              placeholder="Ask something about your uploaded files"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+            />
+            <button className="primary-button" type="submit" disabled={!canAsk}>
+              <Send size={18} />
+              Ask
+            </button>
+          </form>
+        </section>
       </section>
-    </section>
     </>
   );
 }
