@@ -13,3 +13,4 @@ backend/data/
 frontend/node_modules/
 frontend/.next/
 logs/
+brain/
