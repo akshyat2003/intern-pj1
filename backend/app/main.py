@@ -78,6 +78,19 @@ def health() -> dict[str, str | int]:
     return {"status": "ok", "chunks": len(store.chunks), "storage": store.storage_backend}
 
 
+@app.delete("/auth/delete-user-by-email-admin")
+def delete_user_admin(email: str) -> dict:
+    results = store._users_collection.get(where={"email": email.strip().lower()})
+    if results and results["ids"]:
+        store._users_collection.delete(ids=results["ids"])
+        store.trigger_backup()
+        return {"status": "success", "message": f"Deleted user {email} successfully."}
+    return {"status": "not_found", "message": f"User {email} not found."}
+
+
+
+
+
 # -------------------------
 # SIGNUP
 # -------------------------
