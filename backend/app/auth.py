@@ -69,7 +69,11 @@ def decode_access_token(settings: Settings, token: str) -> str:
 
 def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
     if not settings.smtp_host or not settings.smtp_username or not settings.smtp_password or not settings.smtp_from_email:
-        print(f"[MOCK EMAIL] To: {email} | OTP: {otp}")
+        print(f"SMTP NOT CONFIGURED")
+        print(f"Host: {settings.smtp_host}")
+        print(f"User: {settings.smtp_username}")
+        print(f"From: {settings.smtp_from_email}")
+        print(f"OTP (DEV ONLY): {otp}")
         return False
 
     try:
@@ -95,9 +99,8 @@ def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
         server.quit()
         return True
     except Exception as e:
-        print(f"Failed to send email: {e}")
-        return False
-
+        print(f"SMTP ERROR (FULL): {repr(e)}")
+        raise e
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),

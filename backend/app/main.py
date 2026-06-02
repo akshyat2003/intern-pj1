@@ -101,16 +101,16 @@ def signup(request: SignupRequest) -> SignupResponse:
     if existing_user:
         if not existing_user.get("is_verified", False):
             store.save_otp(email, hash_otp(otp), expires_at.isoformat())
-            email_sent = send_otp_email(settings, email, otp)
-            if not email_sent:
-                if settings.smtp_host:
-                    raise HTTPException(status_code=500, detail="Failed to send verification email. Please verify your SMTP settings (host, port, API credentials, verified sender) on Render.")
-                else:
+            try:
+                email_sent = send_otp_email(settings, email, otp)
+                if not email_sent:
                     if settings.env == "development":
                         print(f"\n--- DEV OTP --- {email} | {otp}\n", flush=True)
                     message = "Account already exists but is unverified. Check server logs for your OTP."
-            else:
-                message = "Account already exists but is unverified. A new OTP has been sent to your email."
+                else:
+                    message = "Account already exists but is unverified. A new OTP has been sent to your email."
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"SMTP Send Failure: {str(e)}")
             return SignupResponse(message=message, email=email)
         else:
             raise HTTPException(status_code=409, detail="A user with this email already exists.")
@@ -128,17 +128,16 @@ def signup(request: SignupRequest) -> SignupResponse:
 
     store.save_otp(email, hash_otp(otp), expires_at.isoformat())
 
-    email_sent = send_otp_email(settings, email, otp)
-
-    if not email_sent:
-        if settings.smtp_host:
-            raise HTTPException(status_code=500, detail="Failed to send verification email. Please verify your SMTP settings (host, port, API credentials, verified sender) on Render.")
-        else:
+    try:
+        email_sent = send_otp_email(settings, email, otp)
+        if not email_sent:
             if settings.env == "development":
                 print(f"\n--- DEV OTP --- {email} | {otp}\n", flush=True)
             message = "Signup successful. SMTP is not configured. Check server logs (dev mode)."
-    else:
-        message = "Signup successful. Check your email for OTP."
+        else:
+            message = "Signup successful. Check your email for OTP."
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SMTP Send Failure: {str(e)}")
 
     return SignupResponse(message=message, email=email)
 
