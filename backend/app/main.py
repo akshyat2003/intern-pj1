@@ -261,11 +261,15 @@ async def chat(
 
     store.add_chat_message(user_id, "user", question)
 
+    import time
+    start_time = time.time()
     results = store.search(user_id, question, settings.max_context_chunks)
+    search_latency = time.time() - start_time
 
     if not results:
         answer = "I do not know based on uploaded files."
         store.add_chat_message(user_id, "assistant", answer)
+        store.log_retrieval(user_id, question, [], answer, search_latency)
 
         from .llm_client import estimate_tokens
 
@@ -320,6 +324,14 @@ async def chat(
         "assistant",
         answer,
         [s.model_dump() for s in sources],
+    )
+
+    store.log_retrieval(
+        user_id,
+        question,
+        [f"{chunk.document_id}_{chunk.chunk_id}" for chunk, _ in results],
+        answer,
+        search_latency
     )
 
     return ChatResponse(
