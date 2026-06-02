@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+import httpx
 
 from .config import Settings, get_settings
 from .document_store import store
@@ -73,6 +74,29 @@ def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
         return False
 
     try:
+        # Check if using Brevo (Sendinblue) and route via HTTPS REST API
+        # This completely bypasses Render free-tier outbound SMTP port restrictions.
+        if "brevo.com" in settings.smtp_host or "sendinblue.com" in settings.smtp_host:
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "accept": "application/json",
+                "api-key": settings.smtp_password,
+                "content-type": "application/json"
+            }
+            payload = {
+                "sender": {"email": settings.smtp_from_email},
+                "to": [{"email": email}],
+                "subject": "Your Verification OTP",
+                "textContent": f"Hello,\n\nYour verification OTP code is: {otp}\n\nThis OTP is valid for {settings.otp_expiry_minutes} minutes."
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, headers=headers, json=payload)
+                if resp.status_code in (200, 201, 202):
+                    print("OTP sent successfully via Brevo HTTP API.")
+                    return True
+                else:
+                    print(f"Brevo HTTP API failed: {resp.status_code} - {resp.text}. Falling back to standard SMTP...")
+
         msg = MIMEMultipart()
         msg["From"] = settings.smtp_from_email
         msg["To"] = email
