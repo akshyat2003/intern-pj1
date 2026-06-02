@@ -11,7 +11,6 @@ from .auth import (
     hash_password,
     normalize_email,
     safe_send_otp,
-    send_otp_email,
     verify_password,
 )
 from .config import get_settings
