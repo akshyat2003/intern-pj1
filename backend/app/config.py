@@ -29,11 +29,16 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=150, validation_alias="CHUNK_OVERLAP")
     database_url: str = Field(default="", validation_alias="DATABASE_URL")
     sqlite_path: str = Field(default="data/documents.db", validation_alias="SQLITE_PATH")
+    max_user_tokens: int = Field(default=50000, validation_alias="MAX_USER_TOKENS")
+    model_context_window: int = Field(default=8192, validation_alias="MODEL_CONTEXT_WINDOW")
     auth_secret: str = Field(default="change-this-local-dev-secret", validation_alias="AUTH_SECRET")
     auth_token_minutes: int = Field(default=10080, validation_alias="AUTH_TOKEN_MINUTES")
     otp_expiry_minutes: int = Field(default=10, validation_alias="OTP_EXPIRY_MINUTES")
-    msg91_authkey: str = Field(default="", validation_alias="MSG91_AUTHKEY")
-    msg91_template_id: str = Field(default="", validation_alias="MSG91_TEMPLATE_ID")
+    smtp_host: str = Field(default="", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtp_username: str = Field(default="", validation_alias="SMTP_USERNAME")
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="", validation_alias="SMTP_FROM_EMAIL")
 
 
     @property

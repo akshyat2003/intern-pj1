@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff, FileUp, LogOut, Send, UploadCloud, UserPlus } from "lucide-react";
+import { Bot, Cpu, Coins, Eye, EyeOff, FileUp, LogOut, Send, UploadCloud, UserPlus } from "lucide-react";
+
+
 
 type Source = {
   filename: string;
@@ -23,6 +25,8 @@ type User = {
   email: string;
   phone_number: string;
   is_verified: boolean;
+  tokens_used?: number;
+  token_limit?: number;
 };
 
 type AuthMode = "login" | "signup" | "verify";
@@ -33,6 +37,20 @@ const API_BASE_URL =
     ? "http://127.0.0.1:8000"
     : "/api");
 const TOKEN_KEY = "rag_chatbot_token";
+
+function createMockJwt(email: string, firstName: string, lastName: string, phoneNumber: string): string {
+  const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" }));
+  const payload = btoa(
+    JSON.stringify({
+      sub: `mock-uid-${email.replace(/[^a-zA-Z0-9]/g, "")}`,
+      email: email,
+      name: `${firstName} ${lastName}`,
+      phone_number: phoneNumber,
+      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+    })
+  );
+  return `${header}.${payload}.signature`;
+}
 
 async function readJson(response: Response) {
   const data = await response.json().catch(() => ({}));
@@ -80,7 +98,7 @@ const COUNTRY_CODES = [
 ];
 
 
-export default function ChatWorkspace() {
+export default function ChatWorkspace({ status }: { status: string }) {
   const [token, setToken] = useState<string>(() => {
     if (typeof window === "undefined") {
       return "";
@@ -111,6 +129,12 @@ export default function ChatWorkspace() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isAsking, setIsAsking] = useState(false);
+  const [lastQueryStats, setLastQueryStats] = useState<{
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    contextWindowLimit: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canAsk = useMemo(() => question.trim().length > 0 && !isAsking && !!token, [question, isAsking, token]);
@@ -161,7 +185,7 @@ export default function ChatWorkspace() {
     });
   }
 
-  function logout() {
+  async function logout() {
     window.localStorage.removeItem(TOKEN_KEY);
     setToken("");
     setUser(null);
@@ -176,21 +200,55 @@ export default function ChatWorkspace() {
     setAuthError("");
     setAuthMessage("");
 
+    // Password complexity validation
+    const password = signupForm.password;
+    if (password.length < 8 || password.length > 12) {
+      setAuthError("Password must be between 8 and 12 characters long.");
+      setIsAuthLoading(false);
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setAuthError("Password must contain at least one uppercase letter (A–Z).");
+      setIsAuthLoading(false);
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setAuthError("Password must contain at least one lowercase letter (a–z).");
+      setIsAuthLoading(false);
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setAuthError("Password must contain at least one number (0–9).");
+      setIsAuthLoading(false);
+      return;
+    }
+    const specialCharSet = /[@#$%&*_\-+=!?^~.,;/\\|()[\]{}':"`<>]/;
+    if (!specialCharSet.test(password)) {
+      setAuthError("Password must contain at least one special character (@, #, $, %, &, *, etc.).");
+      setIsAuthLoading(false);
+      return;
+    }
+
     try {
       const formattedPhone = `${countryCode}${signupForm.phone_number.replace(/\D/g, "")}`;
-      const data = await readJson(
-        await fetch(`${API_BASE_URL}/auth/signup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...signupForm,
-            phone_number: formattedPhone,
-          }),
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: signupForm.first_name,
+          last_name: signupForm.last_name,
+          email: signupForm.email,
+          phone_number: formattedPhone,
+          password: signupForm.password,
         }),
-      );
-      setVerifyForm({ email: signupForm.email, otp: data.dev_otp || "" });
+      });
+
+      const data = await readJson(response);
+      setAuthMessage(data.message);
+      setVerifyForm({ email: signupForm.email, otp: "" });
       setAuthMode("verify");
-      setAuthMessage(data.dev_otp ? `Use this local OTP: ${data.dev_otp}` : data.message);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Signup failed.");
     } finally {
@@ -205,18 +263,20 @@ export default function ChatWorkspace() {
     setAuthMessage("");
 
     try {
-      const data = await readJson(
-        await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(verifyForm),
-        }),
-      );
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(verifyForm),
+      });
+
+      const data = await readJson(response);
+      setAuthMessage(data.message);
       setLoginForm({ email: verifyForm.email, password: "" });
       setAuthMode("login");
-      setAuthMessage(data.message);
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "OTP verification failed.");
+      setAuthError(error instanceof Error ? error.message : "Verification failed.");
     } finally {
       setIsAuthLoading(false);
     }
@@ -229,13 +289,15 @@ export default function ChatWorkspace() {
     setAuthMessage("");
 
     try {
-      const data = await readJson(
-        await fetch(`${API_BASE_URL}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(loginForm),
-        }),
-      );
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(loginForm),
+      });
+
+      const data = await readJson(response);
       window.localStorage.setItem(TOKEN_KEY, data.access_token);
       setToken(data.access_token);
       setUser(data.user);
@@ -296,6 +358,22 @@ export default function ChatWorkspace() {
       });
       const data = await readJson(response);
       setMessages((current) => [...current, { role: "assistant", content: data.answer, sources: data.sources }]);
+      
+      if (data.prompt_tokens !== undefined) {
+        setLastQueryStats({
+          promptTokens: data.prompt_tokens,
+          completionTokens: data.completion_tokens,
+          totalTokens: data.total_tokens,
+          contextWindowLimit: data.context_window_limit,
+        });
+      }
+      if (data.tokens_used !== undefined && user) {
+        setUser((prev) => prev ? {
+          ...prev,
+          tokens_used: data.tokens_used,
+          token_limit: data.token_limit,
+        } : null);
+      }
     } catch (error) {
       const content = error instanceof Error ? error.message : "Chat request failed.";
       setMessages((current) => [...current, { role: "assistant", content }]);
@@ -306,113 +384,142 @@ export default function ChatWorkspace() {
 
   if (!token || !user) {
     return (
-      <section className="auth-shell">
-        <div className="panel auth-panel">
-          <div className="auth-heading">
-            <UserPlus size={24} />
-            <div>
-              <h1>{authMode === "signup" ? "Create account" : authMode === "verify" ? "Verify email" : "Sign in"}</h1>
-              <p>Use your account to keep documents and chat history saved.</p>
+      <>
+        <header className="topbar">
+          <div className="topbar-inner">
+            <div className="brand">
+              <span className="brand-mark" aria-hidden="true">
+                <Bot size={20} />
+              </span>
+              <span>RAG Chatbot</span>
             </div>
           </div>
-
-          {authMode === "login" || authMode === "signup" ? (
-            <div className="auth-tabs" aria-label="Authentication options">
-              <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => { setAuthMode("login"); setShowPassword(false); }}>
-                Login
-              </button>
-              <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => { setAuthMode("signup"); setShowPassword(false); }}>
-                Sign up
-              </button>
+        </header>
+        <section className="auth-shell">
+          <div className="panel auth-panel">
+            <div className="auth-heading">
+              <UserPlus size={24} />
+              <div>
+                <h1>{authMode === "signup" ? "Create account" : authMode === "verify" ? "Verify email" : "Sign in"}</h1>
+                <p>Use your account to keep documents and chat history saved.</p>
+              </div>
             </div>
-          ) : null}
 
-          {authMode === "signup" ? (
-            <form className="auth-form" onSubmit={signup}>
-              <input placeholder="First name" value={signupForm.first_name} onChange={(event) => setSignupForm({ ...signupForm, first_name: event.target.value })} />
-              <input placeholder="Last name" value={signupForm.last_name} onChange={(event) => setSignupForm({ ...signupForm, last_name: event.target.value })} />
-              <input placeholder="Email" type="email" value={signupForm.email} onChange={(event) => setSignupForm({ ...signupForm, email: event.target.value })} />
-              <div className="phone-container">
-                <select
-                  className="country-select"
-                  value={countryCode}
-                  onChange={(event) => setCountryCode(event.target.value)}
-                  aria-label="Country Code"
-                >
-                  {COUNTRY_CODES.map((c) => (
-                    <option key={`${c.code}-${c.dial}`} value={c.dial}>
-                      {c.flag} {c.dial} ({c.name})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  placeholder="Phone number"
-                  value={signupForm.phone_number}
-                  onChange={(event) => setSignupForm({ ...signupForm, phone_number: event.target.value })}
-                />
-              </div>
-              <div className="password-container">
-                <input
-                  placeholder="Password"
-                  type={showPassword ? "text" : "password"}
-                  value={signupForm.password}
-                  onChange={(event) => setSignupForm({ ...signupForm, password: event.target.value })}
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {authMode === "login" || authMode === "signup" ? (
+              <div className="auth-tabs" aria-label="Authentication options">
+                <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => { setAuthMode("login"); setShowPassword(false); }}>
+                  Login
+                </button>
+                <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => { setAuthMode("signup"); setShowPassword(false); }}>
+                  Sign up
                 </button>
               </div>
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Creating" : "Create account"}</button>
-            </form>
-          ) : null}
+            ) : null}
 
-          {authMode === "verify" ? (
-            <form className="auth-form" onSubmit={verifyOtp}>
-              <p className="verify-copy">Enter the OTP sent to your phone/email to activate your account.</p>
-              <input placeholder="Email" type="email" value={verifyForm.email} onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })} />
-              <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>
-              <button className="secondary-button" type="button" onClick={() => setAuthMode("signup")}>Back to signup</button>
-            </form>
-          ) : null}
+            {authMode === "signup" ? (
+              <form className="auth-form" onSubmit={signup}>
+                <input placeholder="First name" value={signupForm.first_name} onChange={(event) => setSignupForm({ ...signupForm, first_name: event.target.value })} />
+                <input placeholder="Last name" value={signupForm.last_name} onChange={(event) => setSignupForm({ ...signupForm, last_name: event.target.value })} />
+                <input placeholder="Email" type="email" value={signupForm.email} onChange={(event) => setSignupForm({ ...signupForm, email: event.target.value })} />
+                <div className="phone-container">
+                  <select
+                    className="country-select"
+                    value={countryCode}
+                    onChange={(event) => setCountryCode(event.target.value)}
+                    aria-label="Country Code"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={`${c.code}-${c.dial}`} value={c.dial}>
+                        {c.flag} {c.dial} ({c.name})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    placeholder="Phone number"
+                    value={signupForm.phone_number}
+                    onChange={(event) => setSignupForm({ ...signupForm, phone_number: event.target.value })}
+                  />
+                </div>
+                <div className="password-container">
+                  <input
+                    placeholder="Password"
+                    type={showPassword ? "text" : "password"}
+                    value={signupForm.password}
+                    onChange={(event) => setSignupForm({ ...signupForm, password: event.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--fg-muted, #6b7280)", marginTop: "-6px", marginBottom: "12px", textAlign: "left", lineHeight: "1.4" }}>
+                  Password requirements: 8–12 characters, including A–Z, a–z, 0–9, and a special character (@, #, $, %, etc.).
+                </div>
+                <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Creating" : "Create account"}</button>
+              </form>
+            ) : null}
 
-          {authMode === "login" ? (
-            <form className="auth-form" onSubmit={login}>
-              <input placeholder="Email" type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} />
-              <div className="password-container">
-                <input
-                  placeholder="Password"
-                  type={showPassword ? "text" : "password"}
-                  value={loginForm.password}
-                  onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Signing in" : "Login"}</button>
-            </form>
-          ) : null}
 
-          {authMessage ? <div className="message">{authMessage}</div> : null}
-          {authError ? <div className="message error">{authError}</div> : null}
-        </div>
-      </section>
+
+            {authMode === "verify" ? (
+              <form className="auth-form" onSubmit={verifyOtp}>
+                <p className="verify-copy">Enter the OTP sent to your email to activate your account.</p>
+                <input placeholder="Email" type="email" value={verifyForm.email} onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })} />
+                <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
+                <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>
+                <button className="secondary-button" type="button" onClick={() => setAuthMode("signup")}>Back to signup</button>
+              </form>
+            ) : null}
+
+            {authMode === "login" ? (
+              <form className="auth-form" onSubmit={login}>
+                <input placeholder="Email" type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} />
+                <div className="password-container">
+                  <input
+                    placeholder="Password"
+                    type={showPassword ? "text" : "password"}
+                    value={loginForm.password}
+                    onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Signing in" : "Login"}</button>
+              </form>
+            ) : null}
+
+            {authMessage ? <div className="message">{authMessage}</div> : null}
+            {authError ? <div className="message error">{authError}</div> : null}
+          </div>
+        </section>
+      </>
     );
   }
 
   return (
-    <section className="workspace">
+    <>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">
+              <Bot size={20} />
+            </span>
+            <span>RAG Chatbot</span>
+          </div>
+          <div className="status-pill">{status}</div>
+        </div>
+      </header>
+      <section className="workspace">
       <aside className="panel upload-panel">
         <div className="account-strip">
           <div>
@@ -423,6 +530,98 @@ export default function ChatWorkspace() {
             <LogOut size={18} />
           </button>
         </div>
+        
+        {/* Token Quota & Cost Optimization Panel */}
+        <div className="stats-section">
+          <h2 className="stats-section-title">
+            <Coins size={16} /> Cost Optimization
+          </h2>
+          
+          {/* User Token Quota */}
+          <div className="stats-card">
+            <div className="stats-label-row">
+              <span className="stats-title">Token Quota</span>
+              <span className="stats-values">
+                {(user.tokens_used ?? 0).toLocaleString()} / {(user.token_limit ?? 50000).toLocaleString()}
+              </span>
+            </div>
+            
+            {(() => {
+              const used = user.tokens_used ?? 0;
+              const limit = user.token_limit ?? 50000;
+              const ratio = Math.min(100, (used / limit) * 100);
+              const leftoverPercent = Math.max(0, 100 - ratio).toFixed(1);
+              let statusClass = "safe";
+              if (ratio > 85) statusClass = "critical";
+              else if (ratio > 60) statusClass = "warning";
+
+              return (
+                <>
+                  <div className="progress-track" title={`${ratio.toFixed(1)}% used`}>
+                    <div 
+                      className={`progress-fill ${statusClass}`} 
+                      style={{ width: `${ratio}%` }}
+                    />
+                  </div>
+                  <div className="stats-footer">
+                    <span>{ratio.toFixed(1)}% used</span>
+                    <span className={`percentage-left ${statusClass}`}>{leftoverPercent}% left</span>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Context Window Stats */}
+          {lastQueryStats && (
+            <div className="stats-card" style={{ borderTop: "1px solid rgba(15, 118, 110, 0.1)", paddingTop: "12px" }}>
+              <div className="stats-label-row">
+                <span className="stats-title" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Cpu size={14} /> Context Window
+                </span>
+                <span className="stats-values">
+                  {lastQueryStats.totalTokens.toLocaleString()} / {lastQueryStats.contextWindowLimit.toLocaleString()}
+                </span>
+              </div>
+              
+              {(() => {
+                const used = lastQueryStats.totalTokens;
+                const limit = lastQueryStats.contextWindowLimit;
+                const ratio = Math.min(100, (used / limit) * 100);
+                const leftoverPercent = Math.max(0, 100 - ratio).toFixed(1);
+                let statusClass = "safe";
+                if (ratio > 85) statusClass = "critical";
+                else if (ratio > 60) statusClass = "warning";
+
+                return (
+                  <>
+                    <div className="progress-track" title={`${ratio.toFixed(1)}% used`}>
+                      <div 
+                        className={`progress-fill ${statusClass}`} 
+                        style={{ width: `${ratio}%` }}
+                      />
+                    </div>
+                    <div className="stats-footer">
+                      <span>{ratio.toFixed(1)}% used</span>
+                      <span className={`percentage-left ${statusClass}`}>{leftoverPercent}% left</span>
+                    </div>
+                    <div className="context-breakdown">
+                      <div className="context-breakdown-item">
+                        <span className="context-breakdown-label">Prompt</span>
+                        <span className="context-breakdown-value">{lastQueryStats.promptTokens.toLocaleString()} tkn</span>
+                      </div>
+                      <div className="context-breakdown-item">
+                        <span className="context-breakdown-label">Response</span>
+                        <span className="context-breakdown-value">{lastQueryStats.completionTokens.toLocaleString()} tkn</span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+
         <h1 className="panel-heading">Upload knowledge</h1>
         <p className="panel-copy">Documents and chat history are saved to your account.</p>
         <div className="drop-zone">
@@ -487,5 +686,6 @@ export default function ChatWorkspace() {
         </form>
       </section>
     </section>
+    </>
   );
 }

@@ -3,15 +3,16 @@ import hashlib
 import hmac
 import os
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 import jwt
-import httpx
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import Settings, get_settings
 from .document_store import store
-
 
 security = HTTPBearer()
 
@@ -66,33 +67,33 @@ def decode_access_token(settings: Settings, token: str) -> str:
     return user_id
 
 
-def send_otp_sms(settings: Settings, phone_number: str, otp: str) -> bool:
-    if not settings.msg91_authkey or not settings.msg91_template_id:
+def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
+    if not settings.smtp_host or not settings.smtp_username or not settings.smtp_password or not settings.smtp_from_email:
+        print(f"[MOCK EMAIL] To: {email} | OTP: {otp}")
         return False
-
-    cleaned_phone = "".join(c for c in phone_number if c.isdigit())
-    if not cleaned_phone:
-        return False
-
-    url = "https://control.msg91.com/api/v5/otp"
-    params = {
-        "template_id": settings.msg91_template_id,
-        "mobile": cleaned_phone,
-        "authkey": settings.msg91_authkey,
-        "otp": otp
-    }
 
     try:
-        response = httpx.post(url, params=params, json={})
-        if response.status_code == 200:
-            resp_data = response.json()
-            if resp_data.get("type") == "success":
-                return True
-        return False
-    except Exception as e:
-        print(f"Failed to send MSG91 OTP: {e}")
-        return False
+        msg = MIMEMultipart()
+        msg["From"] = settings.smtp_from_email
+        msg["To"] = email
+        msg["Subject"] = "Your Verification OTP"
 
+        body = f"Hello,\n\nYour verification OTP code is: {otp}\n\nThis OTP is valid for {settings.otp_expiry_minutes} minutes."
+        msg.attach(MIMEText(body, "plain"))
+
+        if settings.smtp_port == 465:
+            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
+        else:
+            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
+            server.starttls()
+
+        server.login(settings.smtp_username, settings.smtp_password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 
 
 def get_current_user(
@@ -103,6 +104,6 @@ def get_current_user(
     user = store.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
-    if not user["is_verified"]:
+    if not user.get("is_verified"):
         raise HTTPException(status_code=403, detail="Verify your account before using the app.")
     return user

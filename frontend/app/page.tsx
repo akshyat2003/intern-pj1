@@ -20,18 +20,7 @@ export default async function Home() {
 
   return (
     <main className="page-shell">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="brand">
-            <span className="brand-mark" aria-hidden="true">
-              <Bot size={20} />
-            </span>
-            <span>RAG Chatbot</span>
-          </div>
-          <div className="status-pill">{status}</div>
-        </div>
-      </header>
-      <ChatWorkspace />
+      <ChatWorkspace status={status} />
     </main>
   );
 }

@@ -10,7 +10,7 @@ from .auth import (
     hash_otp,
     hash_password,
     normalize_email,
-    send_otp_sms,
+    send_otp_email,
     verify_password,
 )
 from .config import get_settings
@@ -27,6 +27,7 @@ from .models import (
     SignupRequest,
     SignupResponse,
     SourceChunk,
+    SyncProfileRequest,
     UploadResponse,
     UserProfile,
     VerifyOtpRequest,
@@ -50,6 +51,7 @@ app.add_middleware(
 
 
 def to_user_profile(user: dict) -> UserProfile:
+    settings = get_settings()
     return UserProfile(
         id=str(user["id"]),
         first_name=user["first_name"],
@@ -57,6 +59,8 @@ def to_user_profile(user: dict) -> UserProfile:
         email=user["email"],
         phone_number=user["phone_number"],
         is_verified=bool(user["is_verified"]),
+        tokens_used=int(user.get("tokens_used", 0)),
+        token_limit=int(user.get("token_limit", settings.max_user_tokens)),
     )
 
 
@@ -72,6 +76,7 @@ def root() -> dict[str, str]:
 @app.get("/health")
 def health() -> dict[str, str | int]:
     return {"status": "ok", "chunks": len(store.chunks), "storage": store.storage_backend}
+
 
 
 @app.post("/auth/signup", response_model=SignupResponse)
@@ -94,16 +99,16 @@ def signup(request: SignupRequest) -> SignupResponse:
 
     store.save_otp(email, hash_otp(otp), expires_at.isoformat())
     
-    sms_sent = send_otp_sms(settings, request.phone_number.strip(), otp)
-    if sms_sent:
-        message = "Signup successful. Check your mobile phone for the OTP."
+    email_sent = send_otp_email(settings, email, otp)
+    if email_sent:
+        message = "Signup successful. Check your email for the OTP."
     else:
-        message = f"Signup successful. MSG91 is not configured, so use the dev OTP: {otp}"
+        message = f"Signup successful. SMTP is not configured, so use the dev OTP: {otp}"
 
     return SignupResponse(
         message=message,
         email=email,
-        dev_otp=None if sms_sent else otp,
+        dev_otp=None if email_sent else otp,
     )
 
 
@@ -145,6 +150,22 @@ def me(user: dict = Depends(get_current_user)) -> UserProfile:
     return to_user_profile(user)
 
 
+@app.post("/auth/sync", response_model=UserProfile)
+def sync_profile(
+    request: SyncProfileRequest,
+    user: dict = Depends(get_current_user),
+) -> UserProfile:
+    store.update_user_profile(
+        uid=user["id"],
+        first_name=request.first_name.strip(),
+        last_name=request.last_name.strip(),
+        phone_number=request.phone_number.strip(),
+    )
+    updated_user = store.get_user_by_id(user["id"])
+    return to_user_profile(updated_user)
+
+
+
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)) -> UploadResponse:
     settings = get_settings()
@@ -174,12 +195,35 @@ async def chat(request: ChatRequest, user: dict = Depends(get_current_user)) -> 
     if not question:
         raise HTTPException(status_code=400, detail="Question is required.")
 
+    user_db = store.get_user_by_id(user_id) or user
+    tokens_used = int(user_db.get("tokens_used", 0))
+    token_limit = int(user_db.get("token_limit", settings.max_user_tokens))
+    if tokens_used >= token_limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"You have reached your token usage limit of {token_limit} tokens (Used: {tokens_used}). Please contact support or upgrade."
+        )
+
     store.add_chat_message(user_id, "user", question)
     results = store.search(user_id, question, settings.max_context_chunks)
     if not results:
         answer = "I do not know based on the uploaded files. Upload a relevant document first."
         store.add_chat_message(user_id, "assistant", answer)
-        return ChatResponse(answer=answer, sources=[])
+        from .llm_client import estimate_tokens
+        p_tokens = estimate_tokens(question)
+        c_tokens = estimate_tokens(answer)
+        total_q_tokens = p_tokens + c_tokens
+        updated_user = store.increment_user_tokens(user_id, total_q_tokens) or user_db
+        return ChatResponse(
+            answer=answer,
+            sources=[],
+            prompt_tokens=p_tokens,
+            completion_tokens=c_tokens,
+            total_tokens=total_q_tokens,
+            context_window_limit=settings.model_context_window,
+            tokens_used=int(updated_user.get("tokens_used", 0)),
+            token_limit=int(updated_user.get("token_limit", settings.max_user_tokens))
+        )
 
     context_parts = [
         f"[{index}] Source: {chunk.filename}, chunk {chunk.chunk_id}\n{chunk.text}"
@@ -188,9 +232,12 @@ async def chat(request: ChatRequest, user: dict = Depends(get_current_user)) -> 
     context = "\n\n".join(context_parts)
 
     try:
-        answer = await generate_answer(settings, question, context)
+        answer, prompt_tokens, completion_tokens = await generate_answer(settings, question, context)
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    total_q_tokens = prompt_tokens + completion_tokens
+    updated_user = store.increment_user_tokens(user_id, total_q_tokens) or user_db
 
     sources = [
         SourceChunk(filename=chunk.filename, chunk_id=chunk.chunk_id, text=chunk.text, score=round(score, 4))
@@ -198,7 +245,16 @@ async def chat(request: ChatRequest, user: dict = Depends(get_current_user)) -> 
     ]
     source_dicts = [source.model_dump() for source in sources]
     store.add_chat_message(user_id, "assistant", answer, source_dicts)
-    return ChatResponse(answer=answer, sources=sources)
+    return ChatResponse(
+        answer=answer,
+        sources=sources,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_q_tokens,
+        context_window_limit=settings.model_context_window,
+        tokens_used=int(updated_user.get("tokens_used", 0)),
+        token_limit=int(updated_user.get("token_limit", settings.max_user_tokens))
+    )
 
 
 @app.get("/chat/history", response_model=list[ChatHistoryItem])
