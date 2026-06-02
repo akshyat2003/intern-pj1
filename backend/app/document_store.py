@@ -189,6 +189,8 @@ class DocumentStore:
     def create_user(self, first_name: str, last_name: str, email: str, phone_number: str, password_hash: str) -> dict:
         if self.get_user_by_email(email):
             raise ValueError("A user with this email already exists.")
+        if self.get_user_by_phone(phone_number):
+            raise ValueError("A user with this phone number already exists.")
         uid = str(uuid4())
         user_data = {
             "id": uid,

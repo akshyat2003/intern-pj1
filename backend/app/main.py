@@ -109,6 +109,10 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
         else:
             raise HTTPException(status_code=409, detail="A user with this email already exists.")
 
+    existing_phone_user = store.get_user_by_phone(phone_key)
+    if existing_phone_user and existing_phone_user.get("is_verified", False):
+        raise HTTPException(status_code=409, detail="A user with this phone number already exists.")
+
     try:
         store.create_user(
             request.first_name.strip(),
