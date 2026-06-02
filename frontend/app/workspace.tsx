@@ -202,8 +202,8 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
     // Password complexity validation
     const password = signupForm.password;
-    if (password.length < 8 || password.length > 12) {
-      setAuthError("Password must be between 8 and 12 characters long.");
+    if (password.length < 8) {
+      setAuthError("Password must be at least 8 characters long.");
       setIsAuthLoading(false);
       return;
     }
@@ -457,7 +457,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
                   </button>
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--fg-muted, #6b7280)", marginTop: "-6px", marginBottom: "12px", textAlign: "left", lineHeight: "1.4" }}>
-                  Password requirements: 8–12 characters, including A–Z, a–z, 0–9, and a special character (@, #, $, %, etc.).
+                  Password requirements: At least 8 characters, including A–Z, a–z, 0–9, and a special character (@, #, $, %, etc.).
                 </div>
                 <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Creating" : "Create account"}</button>
               </form>

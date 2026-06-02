@@ -11,8 +11,8 @@ class SignupRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        if not (8 <= len(v) <= 12):
-            raise ValueError("Password must be between 8 and 12 characters long.")
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
         if not any(c.isupper() for c in v):
             raise ValueError("Password must contain at least one uppercase letter (A-Z).")
         if not any(c.islower() for c in v):
