@@ -117,7 +117,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
     phone_number: "",
     password: "",
   });
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
   const [verifyForm, setVerifyForm] = useState({ phone_number: "", otp: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
@@ -482,7 +482,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
             {authMode === "login" ? (
               <form className="auth-form" onSubmit={login}>
-                <input placeholder="Email" type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} />
+                <input placeholder="Email or Phone number" type="text" value={loginForm.identifier} onChange={(event) => setLoginForm({ ...loginForm, identifier: event.target.value })} />
                 <div className="password-container">
                   <input
                     placeholder="Password"

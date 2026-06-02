@@ -167,9 +167,12 @@ def verify_otp(request: VerifyOtpRequest) -> MessageResponse:
 @app.post("/auth/login", response_model=AuthResponse)
 def login(request: LoginRequest) -> AuthResponse:
     settings = get_settings()
-    email = normalize_email(str(request.email))
-
-    user = store.get_user_by_email(email)
+    identifier = request.identifier.strip()
+    
+    if "@" in identifier:
+        user = store.get_user_by_email(normalize_email(identifier))
+    else:
+        user = store.get_user_by_phone(normalize_phone(identifier))
 
     if not user:
         raise HTTPException(401, "Invalid credentials")
