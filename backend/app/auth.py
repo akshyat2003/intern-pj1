@@ -83,9 +83,12 @@ def send_otp_email(settings: Settings, email: str, otp: str) -> bool:
 
         if settings.smtp_port == 465:
             server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
+            server.ehlo()
         else:
             server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
+            server.ehlo()
             server.starttls()
+            server.ehlo()
 
         server.login(settings.smtp_username, settings.smtp_password)
         server.send_message(msg)
