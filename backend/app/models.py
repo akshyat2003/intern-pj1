@@ -35,11 +35,6 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class AuthResponse(BaseModel):
-    access_token: str
-    user: UserProfile
-
-
 class VerifyOtpRequest(BaseModel):
     email: EmailStr
     otp: str
@@ -55,6 +50,7 @@ class SyncProfileRequest(BaseModel):
     phone_number: str = Field(min_length=6, max_length=30)
 
 
+# Must be defined BEFORE AuthResponse which references it
 class UserProfile(BaseModel):
     id: str
     first_name: str
@@ -64,6 +60,11 @@ class UserProfile(BaseModel):
     is_verified: bool
     tokens_used: int = 0
     token_limit: int = 50000
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    user: UserProfile
 
 
 class ChatRequest(BaseModel):
