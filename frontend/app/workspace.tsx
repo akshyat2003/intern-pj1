@@ -29,7 +29,7 @@ type User = {
   token_limit?: number;
 };
 
-type AuthMode = "login" | "signup" | "verify";
+type AuthMode = "login" | "signup";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -118,7 +118,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
     password: "",
   });
   const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
-  const [verifyForm, setVerifyForm] = useState({ phone_number: "", otp: "" });
+
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
 
@@ -247,8 +247,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
       const data = await readJson(response);
       setAuthMessage(data.message);
-      setVerifyForm({ phone_number: formattedPhone, otp: "" });
-      setAuthMode("verify");
+      setAuthMode("login");
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Signup failed.");
     } finally {
@@ -256,30 +255,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
     }
   }
 
-  async function verifyOtp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsAuthLoading(true);
-    setAuthError("");
-    setAuthMessage("");
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(verifyForm),
-      });
-
-      const data = await readJson(response);
-      setAuthMessage(data.message);
-      setAuthMode("login");
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Verification failed.");
-    } finally {
-      setIsAuthLoading(false);
-    }
-  }
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -295,12 +271,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
         body: JSON.stringify(loginForm),
       });
 
-      if (response.status === 403) {
-        setAuthMessage("Account not verified. Enter the OTP sent to your phone number.");
-        setVerifyForm({ phone_number: "", otp: "" });
-        setAuthMode("verify");
-        return;
-      }
+
 
       const data = await readJson(response);
       window.localStorage.setItem(TOKEN_KEY, data.access_token);
@@ -405,7 +376,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
             <div className="auth-heading">
               <UserPlus size={24} />
               <div>
-                <h1>{authMode === "signup" ? "Create account" : authMode === "verify" ? "Verify phone" : "Sign in"}</h1>
+                <h1>{authMode === "signup" ? "Create account" : "Sign in"}</h1>
                 <p>Use your account to keep documents and chat history saved.</p>
               </div>
             </div>
@@ -470,15 +441,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
 
 
 
-            {authMode === "verify" ? (
-              <form className="auth-form" onSubmit={verifyOtp}>
-                <p className="verify-copy">Enter the OTP sent to your phone number via SMS to activate your account.</p>
-                <input placeholder="Phone number (with country code, e.g. +91XXXXXXXXXX)" type="tel" value={verifyForm.phone_number} onChange={(event) => setVerifyForm({ ...verifyForm, phone_number: event.target.value })} />
-                <input placeholder="OTP" value={verifyForm.otp} onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })} />
-                <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? "Verifying" : "Verify OTP"}</button>
-                <button className="secondary-button" type="button" onClick={() => setAuthMode("signup")}>Back to signup</button>
-              </form>
-            ) : null}
+
 
             {authMode === "login" ? (
               <form className="auth-form" onSubmit={login}>

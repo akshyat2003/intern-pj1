@@ -5,13 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import (
     create_access_token,
-    generate_otp,
     get_current_user,
-    hash_otp,
     hash_password,
     normalize_email,
     normalize_phone,
-    safe_send_otp_sms,
     verify_password,
 )
 from .config import get_settings
@@ -31,7 +28,6 @@ from .models import (
     SyncProfileRequest,
     UploadResponse,
     UserProfile,
-    VerifyOtpRequest,
 )
 
 app = FastAPI(title="RAG Chatbot API")
@@ -91,26 +87,13 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
 
     email = normalize_email(str(request.email))
     phone = request.phone_number.strip()
-    phone_key = normalize_phone(phone)  # digits-only key for OTP lookup
-    otp = generate_otp()
-
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.otp_expiry_minutes
-    )
-
+    phone_key = normalize_phone(phone)
     existing_user = store.get_user_by_email(email)
     if existing_user:
-        if not existing_user.get("is_verified", False):
-            store.save_otp(phone_key, hash_otp(otp), expires_at.isoformat())
-            background_tasks.add_task(safe_send_otp_sms, settings, phone, otp)
-            return SignupResponse(
-                message="Account already exists but is unverified. A new OTP has been sent to your phone.",
-            )
-        else:
-            raise HTTPException(status_code=409, detail="A user with this email already exists.")
+        raise HTTPException(status_code=409, detail="A user with this email already exists.")
 
     existing_phone_user = store.get_user_by_phone(phone_key)
-    if existing_phone_user and existing_phone_user.get("is_verified", False):
+    if existing_phone_user:
         raise HTTPException(status_code=409, detail="A user with this phone number already exists.")
 
     try:
@@ -124,45 +107,10 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    store.save_otp(phone_key, hash_otp(otp), expires_at.isoformat())
-    background_tasks.add_task(safe_send_otp_sms, settings, phone, otp)
-
     return SignupResponse(
-        message="Signup successful. Check your phone for the OTP to verify your account.",
+        message="Signup successful. You can now log in.",
     )
 
-
-# -------------------------
-# VERIFY OTP
-# -------------------------
-@app.post("/auth/verify-otp", response_model=MessageResponse)
-def verify_otp(request: VerifyOtpRequest) -> MessageResponse:
-    phone_key = normalize_phone(request.phone_number)
-    record = store.get_otp(phone_key)
-
-    if not record:
-        raise HTTPException(400, "OTP not found or expired. Please sign up again.")
-
-    expires_at = datetime.fromisoformat(record["expires_at"])
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if expires_at < datetime.now(timezone.utc):
-        store.delete_otp(phone_key)
-        raise HTTPException(400, "OTP expired. Please sign up again.")
-
-    if record["otp_hash"] != hash_otp(request.otp.strip()):
-        raise HTTPException(400, "Invalid OTP.")
-
-    # Find user by phone number and mark as verified
-    user = store.get_user_by_phone(request.phone_number.strip())
-    if not user:
-        raise HTTPException(404, "User not found for this phone number.")
-
-    store.verify_user(user["email"])
-    store.delete_otp(phone_key)
-
-    return MessageResponse(message="Account verified. You can now log in.")
 
 
 # -------------------------

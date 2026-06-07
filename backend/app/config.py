@@ -45,11 +45,7 @@ class Settings(BaseSettings):
     # ---------------- AUTH ----------------
     auth_secret: str = Field(default="change-this-local-dev-secret", validation_alias="AUTH_SECRET")
     auth_token_minutes: int = Field(default=10080, validation_alias="AUTH_TOKEN_MINUTES")
-    otp_expiry_minutes: int = Field(default=10, validation_alias="OTP_EXPIRY_MINUTES")
 
-    # ---------------- MSG91 SMS ----------------
-    msg91_authkey: str = Field(default="", validation_alias="MSG91_AUTHKEY")
-    msg91_template_id: str = Field(default="", validation_alias="MSG91_TEMPLATE_ID")
 
     # ---------------- PROVIDER HELPERS ----------------
     @property

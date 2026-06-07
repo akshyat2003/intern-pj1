@@ -76,7 +76,6 @@ class DocumentStore:
         self._chunks_collection = None
         self._storage_ready = False
         self._db_dir = None
-        self._otps = {}
 
     def configure(self, database_url: str = "", sqlite_path: str = "data/documents.db") -> None:
         db_dir = Path(sqlite_path).parent / "chromadb"
@@ -198,7 +197,7 @@ class DocumentStore:
             "last_name": last_name,
             "email": email.strip().lower(),
             "phone_number": phone_number,
-            "is_verified": False,
+            "is_verified": True,
             "created_at": utc_now(),
             "tokens_used": 0,
             "token_limit": 50000,
@@ -297,15 +296,6 @@ class DocumentStore:
         )
         self.trigger_backup()
         return user
-
-    def save_otp(self, email: str, otp_hash: str, expires_at: str) -> None:
-        self._otps[email] = {"otp_hash": otp_hash, "expires_at": expires_at}
-
-    def get_otp(self, email: str) -> dict | None:
-        return self._otps.get(email)
-
-    def delete_otp(self, email: str) -> None:
-        self._otps.pop(email, None)
 
     def add_chunks(self, user_id: str, filename: str, full_text: str, chunks: Iterable[Chunk]) -> int:
         incoming = list(chunks)
