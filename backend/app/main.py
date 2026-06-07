@@ -101,7 +101,7 @@ def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupR
             request.first_name.strip(),
             request.last_name.strip(),
             email,
-            phone,
+            phone_key,
             hash_password(request.password),
         )
     except ValueError as exc:
