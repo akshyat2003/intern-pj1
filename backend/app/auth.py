@@ -2,9 +2,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import os
-import random
 
-import httpx
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
