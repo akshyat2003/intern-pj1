@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import (
@@ -82,7 +82,7 @@ def health() -> dict[str, str | int]:
 # SIGNUP
 # -------------------------
 @app.post("/auth/signup", response_model=SignupResponse)
-def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> SignupResponse:
+def signup(request: SignupRequest) -> SignupResponse:
     settings = get_settings()
 
     email = normalize_email(str(request.email))
