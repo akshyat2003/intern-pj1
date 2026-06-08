@@ -20,6 +20,7 @@ from .models import (
     ChatHistoryItem,
     ChatRequest,
     ChatResponse,
+    ChatSessionItem,
     LoginRequest,
     MessageResponse,
     SignupRequest,
@@ -211,6 +212,8 @@ async def chat(
     user_id = str(user["id"])
     question = request.question.strip()
 
+    session_id = request.session_id or "default"
+
     if not question:
         raise HTTPException(400, "Question is required.")
 
@@ -225,13 +228,27 @@ async def chat(
             f"Token limit reached ({token_limit}).",
         )
 
-    store.add_chat_message(user_id, "user", question)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    prompts_used_today = int(user_db.get("prompts_used_today", 0))
+    if user_db.get("prompts_date") != today:
+        prompts_used_today = 0
+        
+    file_count = store.get_user_file_count(user_id)
+    max_allowed = min(30, file_count * 10)
+    
+    if prompts_used_today >= max_allowed:
+        raise HTTPException(
+            403,
+            f"You have reached your daily limit of {max_allowed} prompts. Please try using the chatbot again after 24 hours.",
+        )
+
+    store.add_chat_message(user_id, "user", question, session_id=session_id)
 
     results = store.search(user_id, question, settings.max_context_chunks)
 
     if not results:
         answer = "I do not know based on uploaded files."
-        store.add_chat_message(user_id, "assistant", answer)
+        store.add_chat_message(user_id, "assistant", answer, session_id=session_id)
 
         from .llm_client import estimate_tokens
 
@@ -239,7 +256,8 @@ async def chat(
         c_tokens = estimate_tokens(answer)
 
         total = p_tokens + c_tokens
-        updated_user = store.increment_user_tokens(user_id, total) or user_db
+        store.increment_user_tokens(user_id, total)
+        updated_user = store.increment_user_prompts(user_id) or user_db
 
         return ChatResponse(
             answer=answer,
@@ -250,6 +268,7 @@ async def chat(
             context_window_limit=settings.model_context_window,
             tokens_used=int(updated_user.get("tokens_used", 0)),
             token_limit=int(updated_user.get("token_limit", settings.max_user_tokens)),
+            session_id=session_id,
         )
 
     context_parts = [
@@ -268,7 +287,8 @@ async def chat(
 
     total = prompt_tokens + completion_tokens
 
-    updated_user = store.increment_user_tokens(user_id, total) or user_db
+    store.increment_user_tokens(user_id, total)
+    updated_user = store.increment_user_prompts(user_id) or user_db
 
     sources = [
         SourceChunk(
@@ -285,6 +305,7 @@ async def chat(
         "assistant",
         answer,
         [s.model_dump() for s in sources],
+        session_id=session_id
     )
 
     return ChatResponse(
@@ -296,6 +317,7 @@ async def chat(
         context_window_limit=settings.model_context_window,
         tokens_used=int(updated_user.get("tokens_used", 0)),
         token_limit=int(updated_user.get("token_limit", settings.max_user_tokens)),
+        session_id=session_id,
     )
 
 
@@ -303,6 +325,12 @@ async def chat(
 # CHAT HISTORY
 # -------------------------
 @app.get("/chat/history", response_model=list[ChatHistoryItem])
-def chat_history(user: dict = Depends(get_current_user)) -> list[ChatHistoryItem]:
-    rows = store.get_chat_history(str(user["id"]))
+def chat_history(session_id: str = "default", user: dict = Depends(get_current_user)) -> list[ChatHistoryItem]:
+    rows = store.get_chat_history(str(user["id"]), session_id=session_id)
     return [ChatHistoryItem(**row) for row in rows]
+
+
+@app.get("/chat/sessions", response_model=list[ChatSessionItem])
+def chat_sessions(user: dict = Depends(get_current_user)) -> list[ChatSessionItem]:
+    rows = store.get_chat_sessions(str(user["id"]))
+    return [ChatSessionItem(**row) for row in rows]

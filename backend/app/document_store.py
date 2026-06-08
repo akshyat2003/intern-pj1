@@ -148,6 +148,8 @@ class DocumentStore:
             "created_at": utc_now(),
             "tokens_used": 0,
             "token_limit": 50000,
+            "prompts_used_today": 0,
+            "prompts_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "password_hash": password_hash
         }
         self._users_collection.add(
@@ -178,6 +180,10 @@ class DocumentStore:
                     meta["tokens_used"] = 0
                 if "token_limit" not in meta:
                     meta["token_limit"] = 50000
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                if meta.get("prompts_date") != today:
+                    meta["prompts_used_today"] = 0
+                    meta["prompts_date"] = today
                 return meta
         except Exception:
             pass
@@ -194,6 +200,10 @@ class DocumentStore:
                     meta["tokens_used"] = 0
                 if "token_limit" not in meta:
                     meta["token_limit"] = 50000
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                if meta.get("prompts_date") != today:
+                    meta["prompts_used_today"] = 0
+                    meta["prompts_date"] = today
                 return meta
         except Exception:
             pass
@@ -211,6 +221,10 @@ class DocumentStore:
                     meta["tokens_used"] = 0
                 if "token_limit" not in meta:
                     meta["token_limit"] = 50000
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                if meta.get("prompts_date") != today:
+                    meta["prompts_used_today"] = 0
+                    meta["prompts_date"] = today
                 return meta
         except Exception:
             pass
@@ -243,6 +257,37 @@ class DocumentStore:
         )
         self.trigger_backup()
         return user
+
+    def increment_user_prompts(self, user_id: str) -> dict | None:
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return None
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        if user.get("prompts_date") != today:
+            user["prompts_used_today"] = 0
+            user["prompts_date"] = today
+        
+        user["prompts_used_today"] = int(user.get("prompts_used_today", 0)) + 1
+        self._users_collection.update(
+            ids=[user_id],
+            metadatas=[user]
+        )
+        self.trigger_backup()
+        return user
+
+    def get_user_file_count(self, user_id: str) -> int:
+        if not self._storage_ready:
+            self.configure()
+        try:
+            res = self._chunks_collection.get(where={"user_id": user_id})
+            if not res or not res["ids"]:
+                return 0
+            filenames = set()
+            for meta in res["metadatas"]:
+                filenames.add(meta.get("filename"))
+            return len(filenames)
+        except Exception:
+            return 0
 
     def add_chunks(self, user_id: str, filename: str, full_text: str, chunks: Iterable[Chunk]) -> int:
         incoming = list(chunks)
@@ -344,7 +389,7 @@ class DocumentStore:
             print(f"Error querying Chroma DB: {e}")
             return []
 
-    def add_chat_message(self, user_id: str, role: str, content: str, sources: list[dict] | None = None) -> None:
+    def add_chat_message(self, user_id: str, role: str, content: str, sources: list[dict] | None = None, session_id: str = "default") -> None:
         if not self._storage_ready:
             self.configure()
         msg_id = str(uuid4())
@@ -354,6 +399,7 @@ class DocumentStore:
             documents=[content],
             metadatas=[{
                 "user_id": user_id,
+                "session_id": session_id,
                 "role": role,
                 "sources": json.dumps(sources or []),
                 "created_at": created_at
@@ -361,7 +407,7 @@ class DocumentStore:
         )
         self.trigger_backup()
 
-    def get_chat_history(self, user_id: str, limit: int = 50) -> list[dict]:
+    def get_chat_history(self, user_id: str, session_id: str = "default", limit: int = 50) -> list[dict]:
         if not self._storage_ready:
             self.configure()
         try:
@@ -374,6 +420,8 @@ class DocumentStore:
             items = []
             for i in range(len(res["ids"])):
                 meta = res["metadatas"][i]
+                if meta.get("session_id", "default") != session_id:
+                    continue
                 items.append({
                     "id": res["ids"][i],
                     "role": meta["role"],
@@ -385,6 +433,46 @@ class DocumentStore:
             return items[-limit:]
         except Exception as e:
             print(f"Error getting chat history: {e}")
+            return []
+
+    def get_chat_sessions(self, user_id: str) -> list[dict]:
+        if not self._storage_ready:
+            self.configure()
+        try:
+            res = self._chat_messages_collection.get(
+                where={"user_id": user_id}
+            )
+            if not res or not res["ids"]:
+                return []
+
+            sessions = {}
+            for i in range(len(res["ids"])):
+                meta = res["metadatas"][i]
+                sess_id = meta.get("session_id", "default")
+                created_at = meta["created_at"]
+                role = meta["role"]
+                content = res["documents"][i]
+                
+                if sess_id not in sessions:
+                    sessions[sess_id] = {
+                        "session_id": sess_id,
+                        "created_at": created_at,
+                        "title": content[:40] + "..." if role == "user" else "New Chat",
+                        "updated_at": created_at
+                    }
+                else:
+                    if created_at < sessions[sess_id]["created_at"]:
+                        sessions[sess_id]["created_at"] = created_at
+                        if role == "user":
+                            sessions[sess_id]["title"] = content[:40] + "..."
+                    if created_at > sessions[sess_id]["updated_at"]:
+                        sessions[sess_id]["updated_at"] = created_at
+            
+            items = list(sessions.values())
+            items.sort(key=lambda x: x["updated_at"], reverse=True)
+            return items
+        except Exception as e:
+            print(f"Error getting chat sessions: {e}")
             return []
 
 store = DocumentStore()

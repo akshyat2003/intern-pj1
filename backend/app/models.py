@@ -54,6 +54,7 @@ class UserProfile(BaseModel):
     is_verified: bool
     tokens_used: int = 0
     token_limit: int = 50000
+    prompts_used_today: int = 0
 
 
 class AuthResponse(BaseModel):
@@ -63,6 +64,7 @@ class AuthResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+    session_id: str | None = None
 
 
 class SourceChunk(BaseModel):
@@ -81,6 +83,7 @@ class ChatResponse(BaseModel):
     context_window_limit: int
     tokens_used: int
     token_limit: int
+    session_id: str
 
 
 class ChatHistoryItem(BaseModel):
@@ -95,3 +98,9 @@ class UploadResponse(BaseModel):
     filename: str
     chunks_added: int
     total_chunks: int
+
+class ChatSessionItem(BaseModel):
+    session_id: str
+    title: str
+    created_at: str
+    updated_at: str
