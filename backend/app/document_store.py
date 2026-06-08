@@ -338,6 +338,30 @@ class DocumentStore:
         self.trigger_backup()
         return len(incoming)
 
+    def get_user_chunks(self, user_id: str) -> list[Chunk]:
+        if not self._storage_ready:
+            self.configure()
+        try:
+            res = self._chunks_collection.get(where={"user_id": user_id})
+            if not res or not res["ids"]:
+                return []
+            chunk_objs = []
+            for i in range(len(res["ids"])):
+                meta = res["metadatas"][i]
+                chunk_objs.append(
+                    Chunk(
+                        filename=meta["filename"],
+                        chunk_id=meta["chunk_id"],
+                        text=res["documents"][i],
+                        tokens=tuple(),
+                        user_id=meta["user_id"],
+                        document_id=meta["document_id"]
+                    )
+                )
+            return chunk_objs
+        except Exception:
+            return []
+
     def search(self, user_id: str, query: str, limit: int) -> list[tuple[Chunk, float]]:
         if not self._storage_ready:
             self.configure()

@@ -11,13 +11,7 @@ SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx", ".csv", ".ppt", ".pptx"}
 
 async def extract_text(upload: UploadFile) -> str:
     suffix = Path(upload.filename or "").suffix.lower()
-    if suffix not in SUPPORTED_EXTENSIONS:
-        supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
-        raise ValueError(f"Unsupported file type. Upload one of: {supported}")
-
     raw = await upload.read()
-    if suffix in {".txt", ".md", ".csv"}:
-        return raw.decode("utf-8", errors="ignore")
 
     with NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_file.write(raw)
@@ -48,7 +42,8 @@ async def extract_text(upload: UploadFile) -> str:
                 "Please save the file as a modern .pptx presentation and try uploading again."
             )
 
-        raise ValueError("Unsupported document format.")
+        # Fallback for all other files (txt, md, csv, code files, unknown)
+        return raw.decode("utf-8", errors="ignore")
     finally:
         temp_path.unlink(missing_ok=True)
 
