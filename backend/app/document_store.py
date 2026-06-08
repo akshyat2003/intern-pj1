@@ -81,32 +81,6 @@ class DocumentStore:
         db_dir = Path(sqlite_path).parent / "chromadb"
         self._db_dir = db_dir
 
-        # Try to restore database from free cloud storage (Supabase Storage) if configured
-        supabase_url = os.getenv("SUPABASE_URL", "").strip()
-        supabase_key = os.getenv("SUPABASE_KEY", "").strip()
-        supabase_bucket = os.getenv("SUPABASE_BUCKET", "").strip()
-
-        if supabase_url and supabase_key and supabase_bucket:
-            db_dir.parent.mkdir(parents=True, exist_ok=True)
-            zip_file = db_dir.parent / "chromadb.zip"
-            url = f"{supabase_url}/storage/v1/object/authenticated/{supabase_bucket}/chromadb.zip"
-            headers = {"Authorization": f"Bearer {supabase_key}"}
-            try:
-                # Use a larger timeout for the download request
-                with httpx.Client(timeout=30.0) as client:
-                    resp = client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    zip_file.write_bytes(resp.content)
-                    if db_dir.exists():
-                        shutil.rmtree(db_dir)
-                    unzip_file(zip_file, db_dir)
-                    zip_file.unlink(missing_ok=True)
-                    print("Successfully restored Chroma DB backup from Supabase Storage.")
-                else:
-                    print(f"No existing Chroma DB backup found on Supabase (Status: {resp.status_code}).")
-            except Exception as e:
-                print(f"Error restoring Chroma DB backup: {e}")
-
         db_dir.mkdir(parents=True, exist_ok=True)
         self._chroma_client = chromadb.PersistentClient(path=str(db_dir))
         
@@ -123,34 +97,7 @@ class DocumentStore:
         self._storage_ready = True
 
     def _upload_backup(self) -> None:
-        supabase_url = os.getenv("SUPABASE_URL", "").strip()
-        supabase_key = os.getenv("SUPABASE_KEY", "").strip()
-        supabase_bucket = os.getenv("SUPABASE_BUCKET", "").strip()
-        
-        if not (supabase_url and supabase_key and supabase_bucket) or not self._storage_ready or not self._db_dir:
-            return
-
-        zip_file = self._db_dir.parent / "chromadb_temp.zip"
-        try:
-            zip_dir(self._db_dir, zip_file)
-            url = f"{supabase_url}/storage/v1/object/{supabase_bucket}/chromadb.zip"
-            headers = {
-                "Authorization": f"Bearer {supabase_key}",
-                "x-upsert": "true"
-            }
-            
-            with open(zip_file, "rb") as f:
-                with httpx.Client(timeout=60.0) as client:
-                    resp = client.post(url, headers=headers, content=f)
-                
-            if resp.status_code == 200:
-                print("Chroma DB backup successfully synced to Supabase Storage.")
-            else:
-                print(f"Chroma DB backup sync failed: {resp.status_code} - {resp.text}")
-        except Exception as e:
-            print(f"Error syncing Chroma DB backup to Supabase: {e}")
-        finally:
-            zip_file.unlink(missing_ok=True)
+        pass
 
     def trigger_backup(self) -> None:
         # Runs backup asynchronously in a daemon thread so that API requests don't block
