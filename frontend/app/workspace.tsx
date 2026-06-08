@@ -484,25 +484,28 @@ export default function ChatWorkspace({ status }: { status: string }) {
             </span>
             <span>RAG Chatbot</span>
           </div>
-          <div className="status-pill">{status}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="status-pill">{status}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '1px solid var(--line)', paddingLeft: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.2' }}>
+                <strong style={{ fontSize: '14px', fontWeight: 600 }}>{user.first_name} {user.last_name}</strong>
+                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{user.email || user.phone_number}</span>
+              </div>
+              <button className="icon-button" type="button" onClick={logout} title="Logout" style={{ width: '38px', height: '38px' }}>
+                <LogOut size={18} />
+              </button>
+            </div>
+          </div>
         </div>
       </header>
       <section className="workspace">
         <aside className="panel upload-panel">
-          <div className="account-strip">
-            <div>
-              <strong>{user.first_name} {user.last_name}</strong>
-              <span>{user.email}</span>
-            </div>
-            <button className="icon-button" type="button" onClick={logout} title="Logout">
-              <LogOut size={18} />
-            </button>
-          </div>
 
-          {/* Token Quota & Cost Optimization Panel */}
-          <div className="stats-section">
+
+          {/* Token Quota Panel */}
+          <div className="stats-section" style={{ marginTop: 0 }}>
             <h2 className="stats-section-title">
-              <Coins size={16} /> Cost Optimization
+              <Coins size={16} /> Tokens Used
             </h2>
 
             {/* User Token Quota */}
