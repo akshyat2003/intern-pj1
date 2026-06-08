@@ -244,6 +244,17 @@ class DocumentStore:
         )
         self.trigger_backup()
 
+    def update_user_session(self, user_id: str, session_token: str) -> None:
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return
+        user["active_session_token"] = session_token
+        self._users_collection.update(
+            ids=[user_id],
+            metadatas=[user]
+        )
+        self.trigger_backup()
+
     def increment_user_tokens(self, user_id: str, tokens: int) -> dict | None:
         user = self.get_user_by_id(user_id)
         if not user:

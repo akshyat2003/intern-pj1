@@ -136,7 +136,10 @@ def login(request: LoginRequest) -> AuthResponse:
     if not user.get("is_verified", False):
         raise HTTPException(403, "Verify your account before logging in.")
 
-    token = create_access_token(settings, str(user["id"]))
+    import uuid
+    session_token = str(uuid.uuid4())
+    store.update_user_session(str(user["id"]), session_token)
+    token = create_access_token(settings, str(user["id"]), session_token)
 
     return AuthResponse(access_token=token, user=to_user_profile(user))
 
