@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Cpu, Coins, Eye, EyeOff, FileUp, LogOut, Send, UploadCloud, UserPlus, Plus, MessageSquare } from "lucide-react";
+import { Bot, Cpu, Coins, Eye, EyeOff, FileUp, LogOut, Send, UploadCloud, UserPlus, Plus, MessageSquare, ChevronDown, ChevronRight } from "lucide-react";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 
@@ -138,6 +138,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
   const [lastQueryStats, setLastQueryStats] = useState<{
     promptTokens: number;
@@ -558,44 +559,65 @@ export default function ChatWorkspace({ status }: { status: string }) {
           
           <div className="chat-history-section" style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 className="panel-heading" style={{ fontSize: '16px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button 
+                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                style={{ 
+                  fontSize: '16px', 
+                  margin: 0, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--foreground)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px'
+                }}
+                className="panel-heading-btn hover-bg"
+              >
+                {isHistoryOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 <MessageSquare size={16} /> Chat History
-              </h2>
-              <button className="secondary-button" style={{ minHeight: '32px', padding: '0 12px', fontSize: '13px' }} onClick={createNewSession}>
+              </button>
+              <button className="secondary-button" style={{ minHeight: '32px', padding: '0 12px', fontSize: '13px', opacity: isHistoryOpen ? 1 : 0, pointerEvents: isHistoryOpen ? 'auto' : 'none', transition: 'opacity 0.2s' }} onClick={createNewSession}>
                 <Plus size={14} /> New
               </button>
             </div>
-            <div className="history-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
-              {sessions.map(s => (
-                <button
-                  key={s.session_id}
-                  onClick={() => loadSession(s.session_id)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid',
-                    borderColor: currentSessionId === s.session_id ? 'var(--accent)' : 'transparent',
-                    background: currentSessionId === s.session_id ? 'rgba(59, 130, 246, 0.08)' : 'rgba(241, 245, 249, 0.5)',
-                    color: currentSessionId === s.session_id ? 'var(--accent-dark)' : 'var(--foreground)',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: currentSessionId === s.session_id ? 600 : 400,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {s.title}
-                </button>
-              ))}
-              {sessions.length === 0 && (
-                <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '12px', background: 'rgba(241, 245, 249, 0.5)', borderRadius: '8px' }}>
-                  No previous chats
-                </div>
-              )}
-            </div>
+            
+            {isHistoryOpen && (
+              <div className="history-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+                {sessions.map(s => (
+                  <button
+                    key={s.session_id}
+                    onClick={() => loadSession(s.session_id)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid',
+                      borderColor: currentSessionId === s.session_id ? 'var(--accent)' : 'transparent',
+                      background: currentSessionId === s.session_id ? 'rgba(59, 130, 246, 0.08)' : 'rgba(241, 245, 249, 0.5)',
+                      color: currentSessionId === s.session_id ? 'var(--accent-dark)' : 'var(--foreground)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: currentSessionId === s.session_id ? 600 : 400,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {s.title}
+                  </button>
+                ))}
+                {sessions.length === 0 && (
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '12px', background: 'rgba(241, 245, 249, 0.5)', borderRadius: '8px' }}>
+                    No previous chats
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Token Quota Panel */}
