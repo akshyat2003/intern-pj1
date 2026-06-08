@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Cpu, Coins, Eye, EyeOff, FileUp, LogOut, Send, UploadCloud, UserPlus, Plus, MessageSquare } from "lucide-react";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 
 
@@ -722,7 +723,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
             ) : (
               messages.map((message, index) => (
                 <div key={`${message.role}-${index}`} className={`bubble ${message.role}`}>
-                  <div>{message.content}</div>
+                  <MarkdownRenderer content={message.content} />
                   {message.sources?.length ? (
                     <div className="sources">
                       {message.sources.map((source) => (
