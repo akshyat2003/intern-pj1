@@ -103,30 +103,7 @@ class DocumentStore:
         # Runs backup asynchronously in a daemon thread so that API requests don't block
         threading.Thread(target=self._upload_backup, daemon=True).start()
 
-    @property
-    def chunks(self) -> list[Chunk]:
-        if not self._storage_ready:
-            return []
-        try:
-            res = self._chunks_collection.get()
-            if not res or not res["ids"]:
-                return []
-            chunk_objs = []
-            for i in range(len(res["ids"])):
-                meta = res["metadatas"][i]
-                chunk_objs.append(
-                    Chunk(
-                        filename=meta["filename"],
-                        chunk_id=meta["chunk_id"],
-                        text=res["documents"][i],
-                        tokens=tuple(tokenize(res["documents"][i])),
-                        user_id=meta["user_id"],
-                        document_id=meta["document_id"]
-                    )
-                )
-            return chunk_objs
-        except Exception:
-            return []
+
 
     @property
     def storage_backend(self) -> str:

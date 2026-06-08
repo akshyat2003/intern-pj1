@@ -8,8 +8,8 @@ async function getBackendStatus() {
     if (!response.ok) {
       return "Backend unavailable";
     }
-    const data = (await response.json()) as { chunks: number };
-    return `${data.chunks} chunks indexed`;
+    const data = await response.json();
+    return "System Online";
   } catch {
     return "Backend unavailable";
   }

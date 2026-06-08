@@ -76,7 +76,7 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health() -> dict[str, str | int]:
-    return {"status": "ok", "chunks": len(store.chunks), "storage": store.storage_backend}
+    return {"status": "ok", "storage": store.storage_backend}
 
 
 # -------------------------
