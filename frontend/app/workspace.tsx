@@ -753,16 +753,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
               messages.map((message, index) => (
                 <div key={`${message.role}-${index}`} className={`bubble ${message.role}`}>
                   <MarkdownRenderer content={message.content} />
-                  {message.sources?.length ? (
-                    <div className="sources">
-                      {message.sources.map((source) => (
-                        <div className="source" key={`${source.filename}-${source.chunk_id}`}>
-                          {source.filename}, chunk {source.chunk_id}: {source.text.slice(0, 220)}
-                          {source.text.length > 220 ? "..." : ""}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               ))
             )}
