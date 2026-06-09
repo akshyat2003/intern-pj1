@@ -201,6 +201,11 @@ async def upload_file(
         total_chunks=len(store.get_user_chunks(str(user["id"]))),
     )
 
+@app.delete("/documents")
+def clear_documents(user: dict = Depends(get_current_user)) -> dict:
+    store.clear_user_chunks(str(user["id"]))
+    return {"status": "ok", "message": "Documents cleared"}
+
 
 # -------------------------
 # CHAT (RAG)

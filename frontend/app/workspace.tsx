@@ -223,11 +223,23 @@ export default function ChatWorkspace({ status }: { status: string }) {
     setUploadError("");
   }
 
-  function createNewSession() {
+  async function createNewSession() {
     const newId = Math.random().toString(36).slice(2);
     setCurrentSessionId(newId);
     setMessages([]);
     setLastQueryStats(null);
+    setFile(null);
+    setUploadStatus("");
+    setUploadError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    
+    try {
+      await authFetch("/documents", { method: "DELETE" });
+    } catch (e) {
+      console.error("Failed to clear documents", e);
+    }
   }
 
   async function loadSession(id: string) {

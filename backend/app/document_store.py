@@ -313,6 +313,14 @@ class DocumentStore:
         self.trigger_backup()
         return len(incoming)
 
+    def clear_user_chunks(self, user_id: str) -> None:
+        if not self._storage_ready:
+            self.configure()
+        existing = self._chunks_collection.get(where={"user_id": user_id})
+        if existing and existing["ids"]:
+            self._chunks_collection.delete(ids=existing["ids"])
+            self.trigger_backup()
+
     def get_user_chunks(self, user_id: str) -> list[Chunk]:
         if not self._storage_ready:
             self.configure()
