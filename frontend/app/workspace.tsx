@@ -377,6 +377,12 @@ export default function ChatWorkspace({ status }: { status: string }) {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      
+      // Automatically start a fresh chat session for the newly uploaded file
+      const newId = Math.random().toString(36).slice(2);
+      setCurrentSessionId(newId);
+      setMessages([]);
+      setLastQueryStats(null);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Upload failed.");
     } finally {
