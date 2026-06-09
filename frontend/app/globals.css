@@ -47,9 +47,10 @@ button {
 }
 
 .page-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr;
+  overflow: hidden;
 }
 
 .topbar {
@@ -120,6 +121,8 @@ button {
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 32px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .auth-shell {
@@ -222,10 +225,9 @@ button {
 }
 
 .upload-panel {
-  align-self: start;
+  align-self: stretch;
   padding: 28px;
-  position: sticky;
-  top: 100px;
+  overflow-y: auto;
 }
 
 .account-strip {
@@ -401,7 +403,7 @@ button {
 }
 
 .chat-panel {
-  min-height: 750px;
+  height: 100%;
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -541,15 +543,17 @@ button {
     grid-template-columns: 1fr;
     padding: 16px;
     gap: 16px;
+    overflow-y: auto;
   }
 
   .upload-panel {
-    position: static;
     padding: 20px;
+    align-self: auto;
+    overflow-y: visible;
   }
 
   .chat-panel {
-    min-height: 60vh;
+    height: 80vh;
   }
 
   .bubble {
