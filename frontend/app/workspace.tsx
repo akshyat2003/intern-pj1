@@ -586,68 +586,8 @@ export default function ChatWorkspace({ status }: { status: string }) {
             {uploadError ? <div className="message error">{uploadError}</div> : null}
           </div>
 
-          <div className="chat-history-section" style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <button 
-                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                style={{ 
-                  fontSize: '16px', 
-                  margin: 0, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--foreground)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '6px'
-                }}
-                className="panel-heading-btn hover-bg"
-              >
-                {isHistoryOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                <MessageSquare size={16} /> Chat History
-              </button>
-            </div>
-            
-            {isHistoryOpen && (
-              <div className="history-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
-                {sessions.map(s => (
-                  <button
-                    key={s.session_id}
-                    onClick={() => loadSession(s.session_id)}
-                    style={{
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid',
-                      borderColor: currentSessionId === s.session_id ? 'var(--accent)' : 'transparent',
-                      background: currentSessionId === s.session_id ? 'rgba(59, 130, 246, 0.08)' : 'rgba(241, 245, 249, 0.5)',
-                      color: currentSessionId === s.session_id ? 'var(--accent-dark)' : 'var(--foreground)',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: currentSessionId === s.session_id ? 600 : 400,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    {s.title}
-                  </button>
-                ))}
-                {sessions.length === 0 && (
-                  <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '12px', background: 'rgba(241, 245, 249, 0.5)', borderRadius: '8px' }}>
-                    No previous chats
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Token Quota Panel */}
-          <div className="stats-section" style={{ marginTop: 0 }}>
+          <div className="stats-section" style={{ marginTop: 0, marginBottom: '24px' }}>
             <h2 className="stats-section-title">
               <Coins size={16} /> Tokens Used
             </h2>
@@ -733,6 +673,66 @@ export default function ChatWorkspace({ status }: { status: string }) {
                     </>
                   );
                 })()}
+              </div>
+            )}
+          </div>
+
+          <div className="chat-history-section" style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <button 
+                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                style={{ 
+                  fontSize: '16px', 
+                  margin: 0, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--foreground)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px'
+                }}
+                className="panel-heading-btn hover-bg"
+              >
+                {isHistoryOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                <MessageSquare size={16} /> Chat History
+              </button>
+            </div>
+            
+            {isHistoryOpen && (
+              <div className="history-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+                {sessions.map(s => (
+                  <button
+                    key={s.session_id}
+                    onClick={() => loadSession(s.session_id)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid',
+                      borderColor: currentSessionId === s.session_id ? 'var(--accent)' : 'transparent',
+                      background: currentSessionId === s.session_id ? 'rgba(59, 130, 246, 0.08)' : 'rgba(241, 245, 249, 0.5)',
+                      color: currentSessionId === s.session_id ? 'var(--accent-dark)' : 'var(--foreground)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: currentSessionId === s.session_id ? 600 : 400,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {s.title}
+                  </button>
+                ))}
+                {sessions.length === 0 && (
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center', padding: '12px', background: 'rgba(241, 245, 249, 0.5)', borderRadius: '8px' }}>
+                    No previous chats
+                  </div>
+                )}
               </div>
             )}
           </div>
