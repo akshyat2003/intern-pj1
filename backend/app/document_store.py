@@ -285,9 +285,11 @@ class DocumentStore:
         if not self._storage_ready:
             self.configure()
 
-        existing = self._chunks_collection.get(where={"user_id": user_id})
-        if existing and existing["ids"]:
-            self._chunks_collection.delete(ids=existing["ids"])
+        # Delete all existing chunks for this user directly via metadata to ensure 100% wipe
+        try:
+            self._chunks_collection.delete(where={"user_id": user_id})
+        except Exception as e:
+            print("Failed to delete old chunks:", e)
 
         document_id = str(uuid4())
         ids = []
@@ -316,10 +318,11 @@ class DocumentStore:
     def clear_user_chunks(self, user_id: str) -> None:
         if not self._storage_ready:
             self.configure()
-        existing = self._chunks_collection.get(where={"user_id": user_id})
-        if existing and existing["ids"]:
-            self._chunks_collection.delete(ids=existing["ids"])
+        try:
+            self._chunks_collection.delete(where={"user_id": user_id})
             self.trigger_backup()
+        except Exception as e:
+            print("Failed to delete chunks:", e)
 
     def get_user_chunks(self, user_id: str) -> list[Chunk]:
         if not self._storage_ready:
