@@ -557,14 +557,36 @@ export default function ChatWorkspace({ status }: { status: string }) {
       <section className="workspace">
         <aside className="panel upload-panel">
           
+          <button 
+            className="primary-button" 
+            style={{ width: '100%', marginBottom: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} 
+            onClick={createNewSession}
+          >
+            <Plus size={18} /> New Chat
+          </button>
+
+          <div style={{ marginBottom: '24px' }}>
+            <h1 className="panel-heading">Upload knowledge</h1>
+            <p className="panel-copy">Documents and chat history are saved to your account.</p>
+            <div className="drop-zone">
+              <UploadCloud size={34} />
+              <input
+                ref={fileInputRef}
+                className="file-input"
+                type="file"
+                accept=".txt,.md,.pdf,.docx,.csv,.ppt,.pptx"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
+              <button className="secondary-button" type="button" onClick={uploadFile} disabled={isUploading}>
+                <FileUp size={18} />
+                {isUploading ? "Uploading" : "Index file"}
+              </button>
+            </div>
+            {uploadStatus ? <div className="message">{uploadStatus}</div> : null}
+            {uploadError ? <div className="message error">{uploadError}</div> : null}
+          </div>
+
           <div className="chat-history-section" style={{ marginBottom: '24px' }}>
-            <button 
-              className="primary-button" 
-              style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} 
-              onClick={createNewSession}
-            >
-              <Plus size={18} /> New Chat
-            </button>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <button 
                 onClick={() => setIsHistoryOpen(!isHistoryOpen)}
@@ -714,25 +736,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
               </div>
             )}
           </div>
-
-          <h1 className="panel-heading">Upload knowledge</h1>
-          <p className="panel-copy">Documents and chat history are saved to your account.</p>
-          <div className="drop-zone">
-            <UploadCloud size={34} />
-            <input
-              ref={fileInputRef}
-              className="file-input"
-              type="file"
-              accept=".txt,.md,.pdf,.docx,.csv,.ppt,.pptx"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-            <button className="secondary-button" type="button" onClick={uploadFile} disabled={isUploading}>
-              <FileUp size={18} />
-              {isUploading ? "Uploading" : "Index file"}
-            </button>
-          </div>
-          {uploadStatus ? <div className="message">{uploadStatus}</div> : null}
-          {uploadError ? <div className="message error">{uploadError}</div> : null}
         </aside>
 
         <section className="panel chat-panel" aria-label="Document chat">
