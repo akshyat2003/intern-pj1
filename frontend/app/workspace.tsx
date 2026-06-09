@@ -558,6 +558,13 @@ export default function ChatWorkspace({ status }: { status: string }) {
         <aside className="panel upload-panel">
           
           <div className="chat-history-section" style={{ marginBottom: '24px' }}>
+            <button 
+              className="primary-button" 
+              style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} 
+              onClick={createNewSession}
+            >
+              <Plus size={18} /> New Chat
+            </button>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <button 
                 onClick={() => setIsHistoryOpen(!isHistoryOpen)}
@@ -579,9 +586,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
               >
                 {isHistoryOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 <MessageSquare size={16} /> Chat History
-              </button>
-              <button className="secondary-button" style={{ minHeight: '32px', padding: '0 12px', fontSize: '13px', opacity: isHistoryOpen ? 1 : 0, pointerEvents: isHistoryOpen ? 'auto' : 'none', transition: 'opacity 0.2s' }} onClick={createNewSession}>
-                <Plus size={14} /> New
               </button>
             </div>
             
