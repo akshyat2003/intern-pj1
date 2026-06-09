@@ -287,12 +287,7 @@ class DocumentStore:
 
         existing = self._chunks_collection.get(where={"user_id": user_id})
         if existing and existing["ids"]:
-            to_delete = []
-            for i in range(len(existing["ids"])):
-                if existing["metadatas"][i].get("filename") == filename:
-                    to_delete.append(existing["ids"][i])
-            if to_delete:
-                self._chunks_collection.delete(ids=to_delete)
+            self._chunks_collection.delete(ids=existing["ids"])
 
         document_id = str(uuid4())
         ids = []
