@@ -169,18 +169,27 @@ export default function ChatWorkspace({ status }: { status: string }) {
         const fetchedSessions = await readJson(sessionsResponse);
 
         let activeSessionId = currentSessionId;
+        let isNewLogin = false;
         if (!activeSessionId) {
-          if (fetchedSessions.length > 0) {
-            activeSessionId = fetchedSessions[0].session_id;
-          } else {
-            activeSessionId = Math.random().toString(36).slice(2);
-          }
+          activeSessionId = Math.random().toString(36).slice(2);
+          isNewLogin = true;
         }
 
         const historyResponse = await fetch(`${API_BASE_URL}/chat/history?session_id=${activeSessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const history = await readJson(historyResponse);
+
+        if (isNewLogin) {
+          try {
+            await fetch(`${API_BASE_URL}/documents`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        }
 
         if (isActive) {
           setUser(profile);
