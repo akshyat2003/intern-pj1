@@ -737,6 +737,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
                     key={s.session_id}
                     onClick={() => loadSession(s.session_id)}
                     style={{
+                      flexShrink: 0,
                       textAlign: 'left',
                       padding: '10px 12px',
                       borderRadius: '8px',
