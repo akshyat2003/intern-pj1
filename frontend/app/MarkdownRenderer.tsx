@@ -9,6 +9,7 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'default',
   securityLevel: 'loose',
+  suppressErrorRendering: true,
 });
 
 const Mermaid = ({ chart }: { chart: string }) => {
@@ -35,7 +36,7 @@ const Mermaid = ({ chart }: { chart: string }) => {
   }, [chart, containerId]);
 
   if (error) {
-    return <pre className="mermaid-error" style={{ color: 'red', fontSize: '12px', overflowX: 'auto', background: '#fee2e2', padding: '12px', borderRadius: '8px' }}><code>{chart}</code></pre>;
+    return null; // The user will not see the syntax error
   }
 
   return <div className="mermaid-diagram" dangerouslySetInnerHTML={{ __html: svg }} style={{ display: 'flex', justifyContent: 'center', background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', margin: '16px 0', overflowX: 'auto' }} />;
