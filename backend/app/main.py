@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import (
@@ -177,6 +177,7 @@ def sync_profile(
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
+    session_id: str = Form("default"),
     user: dict = Depends(get_current_user),
 ) -> UploadResponse:
     settings = get_settings()
@@ -193,7 +194,7 @@ async def upload_file(
     if not chunks:
         raise HTTPException(400, "No readable text found.")
 
-    added = store.add_chunks(str(user["id"]), filename, text, chunks)
+    added = store.add_chunks(str(user["id"]), session_id, filename, text, chunks)
 
     return UploadResponse(
         filename=filename,
@@ -252,7 +253,7 @@ async def chat(
 
     store.add_chat_message(user_id, "user", question, session_id=session_id)
 
-    results = store.search(user_id, question, settings.max_context_chunks)
+    results = store.search(user_id, session_id, question, settings.max_context_chunks)
 
     if not results:
         answer = "I do not know based on uploaded files."

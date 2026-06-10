@@ -363,8 +363,11 @@ export default function ChatWorkspace({ status }: { status: string }) {
     setUploadError("");
     setUploadStatus("");
 
+    const newId = Math.random().toString(36).slice(2);
+    
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("session_id", newId);
 
     try {
       const response = await authFetch("/upload", {
@@ -378,8 +381,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
         fileInputRef.current.value = "";
       }
       
-      // Automatically start a fresh chat session for the newly uploaded file
-      const newId = Math.random().toString(36).slice(2);
       setCurrentSessionId(newId);
       setMessages([]);
       setLastQueryStats(null);

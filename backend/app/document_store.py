@@ -277,7 +277,7 @@ class DocumentStore:
         except Exception:
             return 0
 
-    def add_chunks(self, user_id: str, filename: str, full_text: str, chunks: Iterable[Chunk]) -> int:
+    def add_chunks(self, user_id: str, session_id: str, filename: str, full_text: str, chunks: Iterable[Chunk]) -> int:
         incoming = list(chunks)
         if not incoming:
             return 0
@@ -285,23 +285,18 @@ class DocumentStore:
         if not self._storage_ready:
             self.configure()
 
-        # Delete all existing chunks for this user directly via metadata to ensure 100% wipe
-        try:
-            self._chunks_collection.delete(where={"user_id": user_id})
-        except Exception as e:
-            print("Failed to delete old chunks:", e)
-
         document_id = str(uuid4())
         ids = []
         documents = []
         metadatas = []
         
         for chunk in incoming:
-            chunk_key = f"{user_id}_{document_id}_{chunk.chunk_id}"
+            chunk_key = f"{user_id}_{session_id}_{document_id}_{chunk.chunk_id}"
             ids.append(chunk_key)
             documents.append(chunk.text)
             metadatas.append({
                 "user_id": user_id,
+                "session_id": session_id,
                 "document_id": document_id,
                 "filename": filename,
                 "chunk_id": chunk.chunk_id
@@ -348,7 +343,7 @@ class DocumentStore:
         except Exception:
             return []
 
-    def search(self, user_id: str, query: str, limit: int) -> list[tuple[Chunk, float]]:
+    def search(self, user_id: str, session_id: str, query: str, limit: int) -> list[tuple[Chunk, float]]:
         if not self._storage_ready:
             self.configure()
 
@@ -356,7 +351,7 @@ class DocumentStore:
             res = self._chunks_collection.query(
                 query_texts=[query],
                 n_results=limit,
-                where={"user_id": user_id}
+                where={"$and": [{"user_id": user_id}, {"session_id": session_id}]}
             )
 
             if not res or not res["ids"] or not res["ids"][0]:
