@@ -789,9 +789,9 @@ export default function ChatWorkspace({ status }: { status: string }) {
             {isAsking ? <div className="bubble assistant">Thinking...</div> : null}
           </div>
 
-          <form className="composer" onSubmit={askQuestion} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--panel-bg)' }}>
-              <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>Model:</span>
+          <form className="composer" onSubmit={askQuestion} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ paddingBottom: '12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>Model:</span>
               <select 
                 value={selectedModel} 
                 onChange={(e) => setSelectedModel(e.target.value)}
@@ -828,14 +828,14 @@ export default function ChatWorkspace({ status }: { status: string }) {
                 </optgroup>
               </select>
             </div>
-            <div style={{ display: 'flex', width: '100%' }}>
+            <div style={{ display: 'flex', width: '100%', gap: '16px', alignItems: 'flex-start' }}>
               <textarea
                 placeholder="Ask something about your uploaded files"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                style={{ flex: 1, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderBottomLeftRadius: '12px', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+                style={{ flex: 1, margin: 0 }}
               />
-              <button className="primary-button" type="submit" disabled={!canAsk} style={{ margin: '12px', alignSelf: 'flex-end' }}>
+              <button className="primary-button" type="submit" disabled={!canAsk} style={{ flexShrink: 0 }}>
                 <Send size={18} />
                 Ask
               </button>
