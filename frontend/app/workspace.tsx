@@ -140,6 +140,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("groq/llama-3.1-8b-instant");
   const [lastQueryStats, setLastQueryStats] = useState<{
     promptTokens: number;
     completionTokens: number;
@@ -406,7 +407,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
       const response = await authFetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed, session_id: currentSessionId }),
+        body: JSON.stringify({ question: trimmed, session_id: currentSessionId, model: selectedModel }),
       });
       const data = await readJson(response);
       setMessages((current) => [...current, { role: "assistant", content: data.answer, sources: data.sources }]);
@@ -788,16 +789,57 @@ export default function ChatWorkspace({ status }: { status: string }) {
             {isAsking ? <div className="bubble assistant">Thinking...</div> : null}
           </div>
 
-          <form className="composer" onSubmit={askQuestion}>
-            <textarea
-              placeholder="Ask something about your uploaded files"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-            />
-            <button className="primary-button" type="submit" disabled={!canAsk}>
-              <Send size={18} />
-              Ask
-            </button>
+          <form className="composer" onSubmit={askQuestion} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--panel-bg)' }}>
+              <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 500 }}>Model:</span>
+              <select 
+                value={selectedModel} 
+                onChange={(e) => setSelectedModel(e.target.value)}
+                style={{ 
+                  fontSize: '13px', 
+                  padding: '4px 8px', 
+                  borderRadius: '6px', 
+                  border: '1px solid var(--line)',
+                  background: 'var(--bg)',
+                  color: 'var(--foreground)',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <optgroup label="Groq (Fast)">
+                  <option value="groq/llama-3.1-8b-instant">Llama 3.1 8B (Groq)</option>
+                  <option value="groq/llama-3.3-70b-versatile">Llama 3.3 70B (Groq)</option>
+                  <option value="groq/mixtral-8x7b-32768">Mixtral 8x7B (Groq)</option>
+                </optgroup>
+                <optgroup label="OpenAI">
+                  <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="openai/gpt-4o">GPT-4o</option>
+                </optgroup>
+                <optgroup label="Anthropic">
+                  <option value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                  <option value="anthropic/claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                </optgroup>
+                <optgroup label="Google">
+                  <option value="gemini/gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="gemini/gemini-1.5-pro">Gemini 1.5 Pro</option>
+                </optgroup>
+                <optgroup label="DeepSeek">
+                  <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+                </optgroup>
+              </select>
+            </div>
+            <div style={{ display: 'flex', width: '100%' }}>
+              <textarea
+                placeholder="Ask something about your uploaded files"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                style={{ flex: 1, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderBottomLeftRadius: '12px', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+              />
+              <button className="primary-button" type="submit" disabled={!canAsk} style={{ margin: '12px', alignSelf: 'flex-end' }}>
+                <Send size={18} />
+                Ask
+              </button>
+            </div>
           </form>
         </section>
       </section>

@@ -1,8 +1,11 @@
-import httpx
 import re
+import os
+from dotenv import load_dotenv
+import litellm
 
 from .config import Settings
 
+load_dotenv()
 
 SYSTEM_PROMPT = """You are a highly advanced RAG chatbot. STRICTLY base your answers ONLY on the provided document context.
 If the context does not contain the answer, you MUST say "I do not know based on the uploaded files." Do NOT invent, guess, or use any pre-existing knowledge.
@@ -62,63 +65,40 @@ def generate_local_answer(question: str, context: str, reason: str | None = None
     return prefix
 
 
-async def generate_answer(settings: Settings, question: str, context: str) -> tuple[str, int, int]:
-    if not settings.provider_api_key:
-        answer = generate_local_answer(question, context, f"{settings.normalized_provider.upper()}_API_KEY is not set")
-        p_tokens = estimate_prompt_tokens(question, context)
-        c_tokens = estimate_tokens(answer)
-        return answer, p_tokens, c_tokens
-
-    url = f"{settings.provider_base_url.rstrip('/')}/chat/completions"
-    payload = {
-        "model": settings.provider_model,
-        "temperature": 0.2,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": f"Document context:\n{context}\n\nQuestion: {question}",
-            },
-        ],
-    }
-    headers = {
-        "Authorization": f"Bearer {settings.provider_api_key}",
-        "Content-Type": "application/json",
-    }
+async def generate_answer(settings: Settings, question: str, context: str, model: str | None = None) -> tuple[str, int, int]:
+    selected_model = model or settings.provider_model
+    
+    # Map litellm prefix for DeepSeek if they passed just deepseek-chat
+    if selected_model == "deepseek-chat":
+        selected_model = "deepseek/deepseek-chat"
+        
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Document context:\n{context}\n\nQuestion: {question}"},
+    ]
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(url, json=payload, headers=headers)
-    except httpx.HTTPError as exc:
+        response = await litellm.acompletion(
+            model=selected_model,
+            messages=messages,
+            temperature=0.2,
+        )
+        answer = response.choices[0].message.content.strip()
+        usage = response.get("usage", {})
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        
+        if not prompt_tokens:
+            prompt_tokens = estimate_prompt_tokens(question, context)
+        if not completion_tokens:
+            completion_tokens = estimate_tokens(answer)
+            
+        return answer, prompt_tokens, completion_tokens
+
+    except Exception as exc:
         answer = generate_local_answer(question, context, f"the provider request failed: {exc}")
         p_tokens = estimate_prompt_tokens(question, context)
         c_tokens = estimate_tokens(answer)
         return answer, p_tokens, c_tokens
 
-    if response.status_code >= 400:
-        answer = generate_local_answer(
-            question,
-            context,
-            f"the provider returned HTTP {response.status_code}. Check your API key and model in backend/.env",
-        )
-        p_tokens = estimate_prompt_tokens(question, context)
-        c_tokens = estimate_tokens(answer)
-        return answer, p_tokens, c_tokens
-
-    data = response.json()
-    try:
-        answer = data["choices"][0]["message"]["content"].strip()
-        usage = data.get("usage", {})
-        prompt_tokens = usage.get("prompt_tokens", 0)
-        completion_tokens = usage.get("completion_tokens", 0)
-        if not prompt_tokens:
-            prompt_tokens = estimate_prompt_tokens(question, context)
-        if not completion_tokens:
-            completion_tokens = estimate_tokens(answer)
-        return answer, prompt_tokens, completion_tokens
-    except (KeyError, IndexError, TypeError):
-        answer = generate_local_answer(question, context, "the provider returned an unexpected response")
-        p_tokens = estimate_prompt_tokens(question, context)
-        c_tokens = estimate_tokens(answer)
-        return answer, p_tokens, c_tokens
 

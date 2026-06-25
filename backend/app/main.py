@@ -289,7 +289,7 @@ async def chat(
 
     try:
         answer, prompt_tokens, completion_tokens = await generate_answer(
-            settings, question, context
+            settings, question, context, request.model
         )
     except RuntimeError as exc:
         raise HTTPException(500, str(exc)) from exc
