@@ -1,6 +1,7 @@
 import re
 import os
 from dotenv import load_dotenv
+import asyncio
 import litellm
 
 from .config import Settings
@@ -83,8 +84,40 @@ def generate_local_answer(question: str, context: str, reason: str | None = None
 async def generate_answer(settings: Settings, question: str, context: str, model: str | None = None) -> tuple[str, int, int, str]:
     selected_model = model or settings.provider_model
     
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Document context:\n{context}\n\nQuestion: {question}"},
+    ]
+
     # Smart Auto Model Selection
     if selected_model == "auto":
+        # Multi-model Comparison Mode for long questions
+        if len(question) >= 60:
+            m1 = "deepseek/deepseek-chat"
+            m2 = "gemini/gemini-1.5-flash"
+            try:
+                responses = await asyncio.gather(
+                    litellm.acompletion(model=m1, messages=messages, temperature=0.2),
+                    litellm.acompletion(model=m2, messages=messages, temperature=0.2)
+                )
+                ans1 = responses[0].choices[0].message.content.strip()
+                ans2 = responses[1].choices[0].message.content.strip()
+                
+                pt1 = responses[0].get("usage", {}).get("prompt_tokens", 0)
+                ct1 = responses[0].get("usage", {}).get("completion_tokens", 0)
+                pt2 = responses[1].get("usage", {}).get("prompt_tokens", 0)
+                ct2 = responses[1].get("usage", {}).get("completion_tokens", 0)
+                
+                if not pt1: pt1 = estimate_prompt_tokens(question, context)
+                if not ct1: ct1 = estimate_tokens(ans1)
+                if not pt2: pt2 = pt1
+                if not ct2: ct2 = estimate_tokens(ans2)
+
+                final_ans = f"### 🧠 DeepSeek Chat\n{ans1}\n\n---\n\n### ✨ Gemini 1.5 Flash\n{ans2}"
+                return final_ans, max(pt1, pt2), ct1 + ct2, "COMPARISON MODE"
+            except Exception as e:
+                pass # Fallback to normal routing if comparison fails
+                
         q_lower = question.lower()
         complex_keywords = ["analyze", "compare", "synthesize", "code", "explain", "detail"]
         
@@ -101,11 +134,6 @@ async def generate_answer(settings: Settings, question: str, context: str, model
     # Map litellm prefix for DeepSeek if they passed just deepseek-chat
     if selected_model == "deepseek-chat":
         selected_model = "deepseek/deepseek-chat"
-        
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Document context:\n{context}\n\nQuestion: {question}"},
-    ]
 
     try:
         response = await litellm.acompletion(
