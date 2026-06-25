@@ -68,6 +68,21 @@ def generate_local_answer(question: str, context: str, reason: str | None = None
 async def generate_answer(settings: Settings, question: str, context: str, model: str | None = None) -> tuple[str, int, int]:
     selected_model = model or settings.provider_model
     
+    # Smart Auto Model Selection
+    if selected_model == "auto":
+        q_lower = question.lower()
+        complex_keywords = ["analyze", "compare", "synthesize", "code", "explain", "detail"]
+        
+        if len(context) > 20000:
+            # Huge context -> Gemini 1.5 Pro is best suited
+            selected_model = "gemini/gemini-1.5-pro"
+        elif any(k in q_lower for k in complex_keywords):
+            # Complex reasoning -> Claude 3.5 Sonnet or GPT-4o
+            selected_model = "anthropic/claude-3-5-sonnet-20241022"
+        else:
+            # Fast, simple queries -> Groq Llama 3.1
+            selected_model = "groq/llama-3.1-8b-instant"
+
     # Map litellm prefix for DeepSeek if they passed just deepseek-chat
     if selected_model == "deepseek-chat":
         selected_model = "deepseek/deepseek-chat"

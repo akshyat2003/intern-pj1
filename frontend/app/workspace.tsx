@@ -140,7 +140,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("groq/llama-3.1-8b-instant");
+  const [selectedModel, setSelectedModel] = useState("auto");
   const [lastQueryStats, setLastQueryStats] = useState<{
     promptTokens: number;
     completionTokens: number;
@@ -806,6 +806,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
                   cursor: 'pointer'
                 }}
               >
+                <option value="auto">✨ Auto (Smart Selection)</option>
                 <optgroup label="Groq (Fast)">
                   <option value="groq/llama-3.1-8b-instant">Llama 3.1 8B (Groq)</option>
                   <option value="groq/llama-3.3-70b-versatile">Llama 3.3 70B (Groq)</option>
