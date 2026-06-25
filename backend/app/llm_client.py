@@ -80,7 +80,7 @@ def generate_local_answer(question: str, context: str, reason: str | None = None
     return prefix
 
 
-async def generate_answer(settings: Settings, question: str, context: str, model: str | None = None) -> tuple[str, int, int]:
+async def generate_answer(settings: Settings, question: str, context: str, model: str | None = None) -> tuple[str, int, int, str]:
     selected_model = model or settings.provider_model
     
     # Smart Auto Model Selection
@@ -123,12 +123,12 @@ async def generate_answer(settings: Settings, question: str, context: str, model
         if not completion_tokens:
             completion_tokens = estimate_tokens(answer)
             
-        return answer, prompt_tokens, completion_tokens
+        return answer, prompt_tokens, completion_tokens, selected_model
 
     except Exception as exc:
         answer = generate_local_answer(question, context, f"the provider request failed: {exc}")
         p_tokens = estimate_prompt_tokens(question, context)
         c_tokens = estimate_tokens(answer)
-        return answer, p_tokens, c_tokens
+        return answer, p_tokens, c_tokens, "local-fallback"
 
 

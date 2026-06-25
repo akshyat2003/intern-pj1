@@ -378,7 +378,7 @@ class DocumentStore:
             print(f"Error querying Chroma DB: {e}")
             return []
 
-    def add_chat_message(self, user_id: str, role: str, content: str, sources: list[dict] | None = None, session_id: str = "default") -> None:
+    def add_chat_message(self, user_id: str, role: str, content: str, sources: list[dict] | None = None, session_id: str = "default", model: str | None = None) -> None:
         if not self._storage_ready:
             self.configure()
         msg_id = str(uuid4())
@@ -390,6 +390,7 @@ class DocumentStore:
                 "user_id": user_id,
                 "session_id": session_id,
                 "role": role,
+                "model": model or "",
                 "sources": json.dumps(sources or []),
                 "created_at": created_at
             }]
@@ -415,7 +416,8 @@ class DocumentStore:
                     "id": res["ids"][i],
                     "role": meta["role"],
                     "content": res["documents"][i],
-                    "sources": json.loads(meta["sources"] or "[]"),
+                    "model": meta.get("model", ""),
+                    "sources": json.loads(meta.get("sources", "[]") or "[]"),
                     "created_at": meta["created_at"]
                 })
             items.sort(key=lambda x: x["created_at"])

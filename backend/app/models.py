@@ -77,6 +77,7 @@ class SourceChunk(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
+    used_model: str
     sources: list[SourceChunk]
     prompt_tokens: int
     completion_tokens: int
@@ -91,6 +92,7 @@ class ChatHistoryItem(BaseModel):
     id: str
     role: str
     content: str
+    model: str | None = None
     sources: list[SourceChunk] | None = None
     created_at: str
 

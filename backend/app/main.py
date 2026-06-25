@@ -288,7 +288,7 @@ async def chat(
     context = "\n\n".join(context_parts)
 
     try:
-        answer, prompt_tokens, completion_tokens = await generate_answer(
+        answer, prompt_tokens, completion_tokens, used_model = await generate_answer(
             settings, question, context, request.model
         )
     except RuntimeError as exc:
@@ -314,11 +314,13 @@ async def chat(
         "assistant",
         answer,
         [s.model_dump() for s in sources],
-        session_id=session_id
+        session_id=session_id,
+        model=used_model
     )
 
     return ChatResponse(
         answer=answer,
+        used_model=used_model,
         sources=sources,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,

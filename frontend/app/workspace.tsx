@@ -16,6 +16,7 @@ type Source = {
 type Message = {
   role: "user" | "assistant";
   content: string;
+  model?: string;
   sources?: Source[] | null;
 };
 
@@ -410,7 +411,7 @@ export default function ChatWorkspace({ status }: { status: string }) {
         body: JSON.stringify({ question: trimmed, session_id: currentSessionId, model: selectedModel }),
       });
       const data = await readJson(response);
-      setMessages((current) => [...current, { role: "assistant", content: data.answer, sources: data.sources }]);
+      setMessages((current) => [...current, { role: "assistant", content: data.answer, model: data.used_model, sources: data.sources }]);
 
       if (data.prompt_tokens !== undefined) {
         setLastQueryStats({
@@ -783,6 +784,12 @@ export default function ChatWorkspace({ status }: { status: string }) {
               messages.map((message, index) => (
                 <div key={`${message.role}-${index}`} className={`bubble ${message.role}`}>
                   <MarkdownRenderer content={message.content} />
+                  {message.model && message.role === "assistant" && (
+                    <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Cpu size={12} />
+                      {message.model.split('/').pop()?.toUpperCase()}
+                    </div>
+                  )}
                 </div>
               ))
             )}
