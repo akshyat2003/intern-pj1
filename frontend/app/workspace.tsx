@@ -816,10 +816,6 @@ export default function ChatWorkspace({ status }: { status: string }) {
                   <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
                   <option value="openai/gpt-4o">GPT-4o</option>
                 </optgroup>
-                <optgroup label="Anthropic">
-                  <option value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                  <option value="anthropic/claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
-                </optgroup>
                 <optgroup label="Google">
                   <option value="gemini/gemini-1.5-flash">Gemini 1.5 Flash</option>
                   <option value="gemini/gemini-1.5-pro">Gemini 1.5 Pro</option>
