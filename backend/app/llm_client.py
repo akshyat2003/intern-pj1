@@ -77,8 +77,8 @@ async def generate_answer(settings: Settings, question: str, context: str, model
             # Huge context -> Gemini 1.5 Pro is best suited
             selected_model = "gemini/gemini-1.5-pro"
         elif any(k in q_lower for k in complex_keywords):
-            # Complex reasoning -> GPT-4o
-            selected_model = "openai/gpt-4o"
+            # Complex reasoning -> DeepSeek Chat or Gemini
+            selected_model = "deepseek/deepseek-chat"
         else:
             # Fast, simple queries -> Groq Llama 3.1
             selected_model = "groq/llama-3.1-8b-instant"
