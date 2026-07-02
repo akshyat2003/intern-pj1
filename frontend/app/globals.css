@@ -589,14 +589,7 @@ button {
     gap: 16px;
   }
 
-  .composer {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .composer button {
-    width: 100%;
-  }
+
   
   .auth-shell {
     margin: 30px auto;
